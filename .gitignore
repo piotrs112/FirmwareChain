@@ -2,6 +2,8 @@ __pycache__/
 *.pyc
 pyvenv.cfg
 Scripts/
-.vscode
 Include/
 Lib/
+# VS Code
+*.code-workspace
+.vscode
