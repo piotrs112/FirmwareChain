@@ -3,7 +3,15 @@ import json
 
 
 class Block:
-    def __init__(self, id: int, transactions: list, datetime: str,prev_hash: str):
+    """
+        Block class constructor.
+        :param id: ID of the block, unique
+        :param transactions: List of transactions
+        :param datetime: Date and time of block generation
+        :param prev_hash: Hash of previous block
+    """
+    def __init__(self, id: int, transactions: list, datetime: str, prev_hash: str):
+
         self.id = id
         self.transactions = transactions
         self.datetime = datetime
