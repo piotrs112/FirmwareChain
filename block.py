@@ -7,19 +7,21 @@ class Block:
         Block class.
     """
 
-    def __init__(self, id: int, transactions: list, datetime: str, prev_hash: str):
+    def __init__(self, block_id: int, transactions: list, datetime: str, prev_hash: str):
         """
         Block class constructor
-        :param id: ID of the block, unique
+        :param block_id: ID of the block, unique
         :param transactions: List of transactions
         :param datetime: Date and time of block generation
         :param prev_hash: Hash of previous block
+        :param nonce: Parameter to change block hash.
         """
 
-        self.id = id
+        self.block_id = block_id
         self.transactions = transactions
         self.datetime = datetime
         self.prev_hash = prev_hash
+        self.nonce = 0
 
     def compute_hash(self) -> str:
         """
