@@ -10,6 +10,10 @@ b = Blockchain()
 
 @app.route('/', methods=['GET'])
 def index() -> str:
+    """
+    Returns index page
+    """
+
     html = ""
     for block in b.chain:
         html += str(block)
@@ -17,6 +21,10 @@ def index() -> str:
     return html
 
 if __name__ == '__main__':
+    """
+    Run node on chosen port
+    """
+    
     if len(sys.argv) == 1:
        port = 5000
     else:
