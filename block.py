@@ -1,5 +1,6 @@
 import hashlib
 import json
+from typing import List, Dict
 
 
 class Block:
@@ -7,7 +8,7 @@ class Block:
         Block class.
     """
 
-    def __init__(self, block_id: int, transactions: list, datetime: str, prev_hash: str):
+    def __init__(self, block_id: int, transactions: List[Dict[str,str]], datetime: str, prev_hash: str):
         """
         Block class constructor
         :param block_id: ID of the block, unique

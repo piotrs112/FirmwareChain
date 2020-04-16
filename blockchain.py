@@ -1,5 +1,5 @@
 import time
-from typing import Tuple
+from typing import Tuple, Dict
 
 from block import Block
 
@@ -17,7 +17,7 @@ class Blockchain:
         genesis_block = Block(0, [], "0", "0")
         self.chain.append(genesis_block)
 
-    def add_transaction(self, transaction: dict):
+    def add_transaction(self, transaction: Dict[str, str]):
         """
         Adds transaction to pending transactions.
         :param transaction: Dictionary with keys: version, filename, file_hash
