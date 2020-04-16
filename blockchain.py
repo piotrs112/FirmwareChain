@@ -59,6 +59,6 @@ class Blockchain:
 
     def verify_chain(self) -> bool:
         for i in range(1, len(self.chain)):
-            if self.chain[i].prev_hash != self.chain[i-1].compute_hash():
+            if self.chain[i].prev_hash != self.chain[i-1].compute_hash() or not self.chain[i].compute_hash().startswith('0'*self.DIFFICULTY):
                 return False
         return True
