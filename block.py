@@ -31,3 +31,6 @@ class Block:
         block = json.dumps(self.__dict__, sort_keys=True)
         sha = hashlib.sha256(block.encode()).hexdigest()
         return sha
+
+    def __str__(self):
+        return f"Block ID: {self.block_id}\nTransactions: {len(self.transactions)}\nHash: {self.compute_hash()}\nLast hash: {self.prev_hash}\n"
