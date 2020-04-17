@@ -8,3 +8,4 @@ Lib/
 *.code-workspace
 .vscode
 *.pem
+trusted_keys.json
