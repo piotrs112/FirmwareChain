@@ -65,15 +65,17 @@ class Blockchain:
                 backend=default_backend()
             )
 
-    def add_transaction(self, transaction: Transaction):
+    def add_transaction(self, transaction: Transaction) -> bool:
         """
         Adds transaction to pending transactions.
         :param transaction: Transaction object
         """
+        if transaction.verify():
+            self.pending_transactions.append(transaction)
+            return True
+        else: return False
 
-        self.pending_transactions.append(transaction)
-
-    def add_transaction_from_dict(self, d: Dict[str, str]):
+    def add_transaction_from_dict(self, d: Dict[str, str]) -> bool:
         """
         Created transaction from dict and adds it to pending transactions.
         :param d: Dictionary with keys: version, filename, file_hash
@@ -85,7 +87,11 @@ class Blockchain:
             d["file_hash"],
             d["filename"]
             )
-        self.pending_transactions.append(transaction)
+            
+        if transaction.verify():
+            self.pending_transactions.append(transaction)
+            return True
+        else: return False
 
     def proof_of_work(self, block) -> Tuple[Block, str]:
         """
