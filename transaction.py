@@ -2,7 +2,7 @@ import json
 
 from cryptography.hazmat.backends.openssl.rsa import (_RSAPrivateKey,
                                                       _RSAPublicKey)
-from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
 
@@ -59,13 +59,19 @@ class Transaction:
         """
         Returns string representation of transaction
         """
+        key = self.public_key.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
+        return b"%s%s%s%s" % (key, self.version.encode(), self.file_hash.encode(), self.filename.encode())
 
-        return f"{self.public_key}{self.version}{self.file_hash}{self.filename}"
+    # def is_author_trusted(self):
+    #     """
+    #     Chcecks if author's public key is on the trusted list
+    #     """
+    #     n = self.public_key.public_numbers().n
+    #     e = self.public_key.public_numbers().e
+    #     credentials = f"{n}|{e}"
 
-    def is_author_trusted(self):
-        """
-        Chcecks if author's public key is on the trusted list
-        """
-
-        with open("trusted_keys.json","r") as file:
-            json.loads(file)
+    #     with open("trusted_keys.json","r") as file:
+    #         if credentials in file.read().splitlines():
+    #             return True
+    #         else: return False
+            
