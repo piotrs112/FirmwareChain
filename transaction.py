@@ -1,4 +1,7 @@
-from cryptography.hazmat.backends.openssl.rsa import _RSAPrivateKey, _RSAPublicKey
+import json
+
+from cryptography.hazmat.backends.openssl.rsa import (_RSAPrivateKey,
+                                                      _RSAPublicKey)
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 
@@ -58,3 +61,11 @@ class Transaction:
         """
 
         return f"{self.public_key}{self.version}{self.file_hash}{self.filename}"
+
+    def is_author_trusted(self):
+        """
+        Chcecks if author's public key is on the trusted list
+        """
+
+        with open("trusted_keys.json","r") as file:
+            json.loads(file)
