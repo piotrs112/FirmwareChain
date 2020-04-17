@@ -1,7 +1,13 @@
 import time
-from typing import Tuple, Dict
+from typing import Dict, Tuple
+import os
+
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
 
 from block import Block
+from transaction import Transaction
 
 
 class Blockchain:
@@ -17,12 +23,68 @@ class Blockchain:
         genesis_block = Block(0, [], "0", "0")
         self.chain.append(genesis_block)
 
-    def add_transaction(self, transaction: Dict[str, str]):
+        if not ("private_key.pem" in os.listdir() and "public_key.pem" in os.listdir()):
+            private_key = rsa.generate_private_key(
+                public_exponent=65537,
+                key_size=2048,
+                backend=default_backend()
+            )
+            public_key = private_key.public_key()
+
+            public_pem = public_key.public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo
+            )
+
+            private_pem = private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption()
+            )
+
+            with open('public_key.pem', 'wb') as f:
+                f.write(public_pem)
+
+            with open('private_key.pem', 'wb') as f:
+                f.write(private_pem)
+
+    @property
+    def private_key(self):
+        with open("private_key.pem", "rb") as private_key_file:
+            return serialization.load_pem_private_key(
+                private_key_file.read(),
+                password=None,
+                backend=default_backend()
+            )
+
+    @property
+    def public_key(self):
+        with open("public_key.pem", "rb") as key_file:
+            return serialization.load_pem_public_key(
+                key_file.read(),
+                backend=default_backend()
+            )
+
+    def add_transaction(self, transaction: Transaction):
         """
         Adds transaction to pending transactions.
-        :param transaction: Dictionary with keys: version, filename, file_hash
+        :param transaction: Transaction object
         """
 
+        self.pending_transactions.append(transaction)
+
+    def add_transaction_from_dict(self, d: Dict[str, str]):
+        """
+        Created transaction from dict and adds it to pending transactions.
+        :param d: Dictionary with keys: version, filename, file_hash
+        """
+
+        transaction = Transaction(
+            self.public_key, 
+            d["version"], 
+            d["file_hash"],
+            d["filename"]
+            )
         self.pending_transactions.append(transaction)
 
     def proof_of_work(self, block) -> Tuple[Block, str]:
