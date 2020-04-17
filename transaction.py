@@ -4,12 +4,14 @@ from cryptography.hazmat.backends.openssl.rsa import (_RSAPrivateKey,
                                                       _RSAPublicKey)
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.exceptions import InvalidSignature
 
 
 class Transaction:
     """
     Transaction class containing update data.
     """
+
     def __init__(self, public_key: _RSAPublicKey, version: str, file_hash: str, filename: str):
         """
         Transaction class constructor
@@ -44,34 +46,39 @@ class Transaction:
         Verifies signed transaction using a public key.
         """
 
-        return self.public_key.verify(
-            self.signature,
-            self.representation,
-            padding.PSS(
-                mgf=padding.MGF1(hashes.SHA256()),
-                salt_length=padding.PSS.MAX_LENGTH
-            ),
-            hashes.SHA256()
-        )
+        try:
+            self.public_key.verify(
+                self.signature,
+                self.representation,
+                padding.PSS(
+                    mgf=padding.MGF1(hashes.SHA256()),
+                    salt_length=padding.PSS.MAX_LENGTH
+                ),
+                hashes.SHA256()
+            )
+        except InvalidSignature:
+            return False
+        return True
 
     @property
     def representation(self):
         """
         Returns string representation of transaction
         """
-        key = self.public_key.public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
+        key = self.public_key.public_bytes(
+            serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
         return b"%s%s%s%s" % (key, self.version.encode(), self.file_hash.encode(), self.filename.encode())
 
-    # def is_author_trusted(self):
-    #     """
-    #     Chcecks if author's public key is on the trusted list
-    #     """
-    #     n = self.public_key.public_numbers().n
-    #     e = self.public_key.public_numbers().e
-    #     credentials = f"{n}|{e}"
+    def is_author_trusted(self):
+        """
+        Chcecks if author's public key is on the trusted list
+        """
+        n = self.public_key.public_numbers().n
+        e = self.public_key.public_numbers().e
+        credentials = f"{n}|{e}"
 
-    #     with open("trusted_keys.json","r") as file:
-    #         if credentials in file.read().splitlines():
-    #             return True
-    #         else: return False
-            
+        with open("trusted_keys.json", "r") as file:
+            if credentials in file.read().splitlines():
+                return True
+            else:
+                return False
