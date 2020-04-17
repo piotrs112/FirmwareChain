@@ -7,3 +7,4 @@ Lib/
 # VS Code
 *.code-workspace
 .vscode
+*.pem
