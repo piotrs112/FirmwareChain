@@ -24,12 +24,8 @@ class Blockchain:
         self.chain.append(genesis_block)
 
         if not ("private_key.pem" in os.listdir() and "public_key.pem" in os.listdir()):
-            private_key = rsa.generate_private_key(
-                public_exponent=65537,
-                key_size=2048,
-                backend=default_backend()
-            )
-            public_key = private_key.public_key()
+            private_key = Blockchain.generate_private_key()
+            public_key = Blockchain.generate_public_key(private_key)
 
             public_pem = public_key.public_bytes(
                 encoding=serialization.Encoding.PEM,
@@ -64,6 +60,18 @@ class Blockchain:
                 key_file.read(),
                 backend=default_backend()
             )
+
+    @classmethod
+    def generate_private_key(cls):
+        return rsa.generate_private_key(
+                public_exponent=65537,
+                key_size=2048,
+                backend=default_backend()
+            )
+    
+    @classmethod
+    def generate_public_key(cls, private_key):
+        return private_key.public_key()
 
     def add_transaction(self, transaction: Transaction) -> bool:
         """
