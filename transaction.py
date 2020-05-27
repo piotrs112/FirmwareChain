@@ -1,10 +1,10 @@
 import json
 
+from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.backends.openssl.rsa import (_RSAPrivateKey,
                                                       _RSAPublicKey)
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.exceptions import InvalidSignature
 
 
 class Transaction:
@@ -61,9 +61,9 @@ class Transaction:
         return True
 
     @property
-    def representation(self):
+    def representation(self) -> bytes:
         """
-        Returns string representation of transaction
+        Returns bytes representation of transaction
         """
         key = self.public_key.public_bytes(
             serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
@@ -82,3 +82,13 @@ class Transaction:
                 return True
             else:
                 return False
+
+    @property
+    def is_signed(self):
+        """
+        Returns True if transaction is signed
+        """
+        try:
+            return self.signature is not None
+        except:
+            return False
