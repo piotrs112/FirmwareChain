@@ -1,0 +1,18 @@
+.full-height {
+    min-height: 100vh !important;
+    margin-bottom: 0;
+    padding-top: 10vh !important;
+}
+
+#main {
+    min-height: 100vh !important;
+    margin: 0;
+}
+
+.container.card {
+    height: inherit;
+    width: inherit;
+
+    border-radius: 8px;
+    padding: 5px 10px;
+}
