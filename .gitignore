@@ -9,3 +9,4 @@ Lib/
 .vscode
 *.pem
 trusted_keys.json
+.pytest_cache
