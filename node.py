@@ -1,15 +1,42 @@
 import json
 import sys
+from datetime import datetime
 
 from flask import (Flask, render_template, request)
-from cryptography.hazmat.backends.openssl.rsa import (_RSAPrivateKey
-                                                     , _RSAPublicKey)   
+from cryptography.hazmat.backends.openssl.rsa import (
+    _RSAPrivateKey, _RSAPublicKey)
 
 from blockchain import Blockchain
 from transaction import Transaction
 
 app = Flask(__name__, template_folder="interface", static_folder="interface")
+
+peers = []
+
 b = Blockchain()
+
+#test
+import random
+
+for i in range(16):
+    t = Transaction(b.public_key,
+                     str(random.randint(1, 10)),
+                     str(random.randint(2321343214, 93849309384793)),
+                     "main.h"
+                     )
+    t.sign(b.private_key)
+    b.add_transaction(t)
+
+b.mine()
+
+for i in range(6):
+    t = Transaction(b.public_key,
+                     str(random.randint(1, 10)),
+                     str(random.randint(2321343214, 93849309384793)),
+                     "main.h"
+                     )
+    t.sign(b.private_key)
+    b.add_transaction(t)
 
 
 @app.route('/', methods=['GET'])
@@ -23,7 +50,12 @@ def index():
     for block in b.chain:
         line = []
         for v in block.__dict__.values():
-            line.append(v)
+            if type(v) is datetime:
+                line.append(v.strftime("%d/%m/%Y, %H:%M:%S"))
+            elif type(v) is list:
+                line.append(len(v))
+            else:
+                line.append(v)
         data.append(line)
 
     if len(b.pending_transactions) > 0:
@@ -35,7 +67,8 @@ def index():
                 if type(v) is _RSAPublicKey:
                     if t.is_signed:
                         signed = "Signed"
-                    else: signed = "Not signed"
+                    else:
+                        signed = "Not signed"
                     line.append(signed)
                 elif type(v) is bytes:
                     line.append(hash(v))
@@ -52,6 +85,10 @@ def index():
                            transactions_head=t_h,
                            pending_transactions=p_t)
 
+@app.route("/network/")
+def network():
+    # todo implement connection
+    return "Not implemented"
 
 @app.route("/raw/")
 def raw():
@@ -75,10 +112,10 @@ def raw():
         t_h = []
         p_t = []
 
-    return json.dumps({"blocks":str(data),
-                        "head":str(head),
-                        "transactions_head": t_h,
-                        "pending_transactions": p_t})
+    return json.dumps({"blocks": str(data),
+                       "head": str(head),
+                       "transactions_head": t_h,
+                       "pending_transactions": p_t})
 
 
 @app.route('/rest/', methods=['POST'])
@@ -86,15 +123,15 @@ def rest_api():
     """
     REST API for interacting with node
     """
-
-    print("Connection omg")
     try:
         action = request.json['action']
         print(action)
         req = request.json
+
         if action == "get_chain":
             # todo: make Block serializable
             return str(len(b.chain))
+
         elif action == "add_transaction":
             data = req["transaction"]
             t = Transaction(
@@ -103,11 +140,14 @@ def rest_api():
             b.add_transaction(t)
             print("Added transaction")
             return str(0)
+
         elif action == "mine":
             b.mine()
             return str(0)
+
         elif action == "verify_chain":
             return json.dumps(b.verify_chain())
+
         else:
             print(action)
             print(request.json)
@@ -121,7 +161,6 @@ if __name__ == '__main__':
     """
     Run node on chosen port
     """
-
     if len(sys.argv) == 1:
         port = 5000
     else:
