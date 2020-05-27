@@ -1,4 +1,4 @@
-import time
+from datetime import datetime
 from typing import Dict, Tuple
 import os
 
@@ -142,8 +142,10 @@ class Blockchain:
         if len(self.pending_transactions) > 0:
             new_id = self.last_block.block_id + 1
             prev_hash = self.last_block.compute_hash()
+            time = datetime.now()
+
             block = Block(new_id, self.pending_transactions,
-                          str(time.time()), prev_hash)
+                          time, prev_hash)
             block, new_hash = self.proof_of_work(block)
             self.chain.append(block)
             self.pending_transactions = []
@@ -152,7 +154,7 @@ class Blockchain:
         """
         Verifies if chain is valid
         """
-        
+
         for i in range(1, len(self.chain)):
             if self.chain[i].prev_hash != self.chain[i-1].compute_hash():
                 return False

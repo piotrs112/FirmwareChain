@@ -1,6 +1,7 @@
 import hashlib
 import json
 from typing import Dict, List
+from datetime import datetime
 
 from merklelib import MerkleTree
 
@@ -12,7 +13,7 @@ class Block:
         Block class.
     """
 
-    def __init__(self, block_id: int, transactions: List[Transaction], datetime: str, prev_hash: str):
+    def __init__(self, block_id: int, transactions: List[Transaction], datetime: datetime, prev_hash: str):
         """
         Block class constructor
         :param block_id: ID of the block, unique
@@ -61,4 +62,4 @@ class Block:
 
     @property
     def representation(self):
-        return f"{self.block_id}{self.prev_hash}{self.nonce}{self.merkle_root}"
+        return f"{self.block_id}{self.prev_hash}{self.nonce}{self.merkle_root}{str(self.datetime)}"
