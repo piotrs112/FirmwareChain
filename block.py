@@ -1,6 +1,8 @@
 import hashlib
 import json
-from typing import List, Dict
+from typing import Dict, List
+
+from merklelib import MerkleTree
 
 from transaction import Transaction
 
@@ -31,7 +33,7 @@ class Block:
         Computes sha256 hash of the block.
         """
 
-        block = json.dumps(self.__dict__, sort_keys=True)
+        block = json.dumps(self.representation, sort_keys=True)
         sha = hashlib.sha256(block.encode()).hexdigest()
         return sha
     
@@ -45,5 +47,18 @@ class Block:
                 return False
             return True
 
+    @property
+    def merkle_root(self):
+        """
+        Returns a merkle root of the transaction hashes.
+        """
+
+        tree = MerkleTree(self.transactions)
+        return tree.merkle_root
+
     def __str__(self):
         return f"Block ID: {self.block_id}\nTransactions: {len(self.transactions)}\nHash: {self.compute_hash()}\nLast hash: {self.prev_hash}\n"
+
+    @property
+    def representation(self):
+        return f"{self.block_id}{self.prev_hash}{self.nonce}{self.merkle_root}"
