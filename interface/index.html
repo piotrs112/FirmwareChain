@@ -14,6 +14,7 @@
     <!--Import materialize.css-->
     <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/materialize.min.css') }}"
         media="screen,projection" />
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
 
     <!--Let browser know website is optimized for mobile-->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -32,48 +33,52 @@
             <!-- Main container-->
             <div class="row">
                 <!-- Blocks-->
-                <h3>Blocks</h3>
-                <table class="container">
-                    <thead>
-                        <tr>
-                            {% for h in head %}
-                            <th>{{ h }}</th>
+                <div class="container">
+                    <h3>Blocks</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                {% for h in head %}
+                                <th>{{ h }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for b in blocks %}
+                            <tr>
+                                {% for elem in b %}
+                                <td>{{elem}}</td>
+                                {% endfor %}
+                            </tr>
                             {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for b in blocks %}
-                        <tr>
-                            {% for elem in b %}
-                            <td>{{elem}}</td>
-                            {% endfor %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <!-- Pending transactions-->
             <div class="row">
-                <h3>Pending transactions</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            {% for h in transactions_head %}
-                            <th>{{ h }}</th>
-                            {% endfor %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                    {% for t in pending_transactions %}
-                        <tr>
-                            {% for elem in t %}
-                            <td>{{elem}}</td>
-                            {% endfor %}
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
+                <div class="container">
+                    <h3>Pending transactions</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                {% for h in transactions_head %}
+                                <th>{{ h }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for t in pending_transactions %}
+                            <tr>
+                                {% for elem in t %}
+                                <td>{{elem}}</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -83,10 +88,9 @@
             <i class="large material-icons">mode_edit</i>
         </a>
         <ul>
-            <li><a class="btn-floating red modal-trigger" href="#modal1"><i class="material-icons">insert_chart</i></a></li>
-            <li><a class="btn-floating yellow darken-1"><i class="material-icons">format_quote</i></a></li>
-            <li><a class="btn-floating green"><i class="material-icons">publish</i></a></li>
-            <li><a class="btn-floating blue"><i class="material-icons">attach_file</i></a></li>
+            <li><a class="btn-floating green modal-trigger tooltipped" data-position="left" data-tooltip="New transaction" href="#modal1"><i class="material-icons">add</i></a></li>
+            <li><button onclick="mine()" class="btn-floating yellow darken-1 tooltipped" data-position="left" data-tooltip="Mine"><i class="material-icons">gavel</i></a></button>
+            <li><a href="/network/" class="btn-floating blue darken-1 tooltipped" data-position="left" data-tooltip="Network"><i class="material-icons">wifi</i></a></a>
         </ul>
     </div>
 
@@ -104,16 +108,6 @@
         </div>
     </div>
 
-    <!-- Pending transactions modal -->
-    <div id="pending_t" class="modal">
-        <div class="modal-content">
-            
-        </div>
-        <div class="modal-footer">
-            <button onclick="add_transaction()" class="waves-effect waves-green btn-flat">Add</button>
-            <a class="modal-close waves-effect waves-red btn-flat">Cancel</a>
-        </div>
-    </div>
 
 
     <script type="text/javascript" src="{{ url_for('static', filename='js/materialize.min.js') }}"></script>
@@ -149,6 +143,11 @@
             transaction["version"] = document.getElementsByName("version")[0].value
             transaction["file_hash"] = document.getElementsByName("file_hash")[0].value
             send({action: action, transaction: transaction})
+        }
+
+        function mine(){
+            console.log("Mine")
+            send({action: "mine"})
         }
     </script>
 </body>
