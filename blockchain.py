@@ -5,13 +5,15 @@ import os
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.backends.openssl.rsa import (_RSAPrivateKey,
+                                                      _RSAPublicKey)
 
 from block import Block
 from transaction import Transaction
 
 
 class Blockchain:
-    DIFFICULTY = 2
+    DIFFICULTY = 2 # Number of leading zeros required in hash
 
     def __init__(self):
         """
@@ -23,6 +25,7 @@ class Blockchain:
         genesis_block = Block(0, [], "0", "0")
         self.chain.append(genesis_block)
 
+        # generate private key and public key if not found
         if not ("private_key.pem" in os.listdir() and "public_key.pem" in os.listdir()):
             private_key = Blockchain.generate_private_key()
             public_key = Blockchain.generate_public_key(private_key)
@@ -45,7 +48,10 @@ class Blockchain:
                 f.write(private_pem)
 
     @property
-    def private_key(self):
+    def private_key(self) -> _RSAPrivateKey:
+        """
+        Returns private key object
+        """
         with open("private_key.pem", "rb") as private_key_file:
             return serialization.load_pem_private_key(
                 private_key_file.read(),
@@ -54,7 +60,10 @@ class Blockchain:
             )
 
     @property
-    def public_key(self):
+    def public_key(self) -> _RSAPublicKey:
+        """
+        Returns public key object
+        """
         with open("public_key.pem", "rb") as key_file:
             return serialization.load_pem_public_key(
                 key_file.read(),
@@ -62,7 +71,10 @@ class Blockchain:
             )
 
     @classmethod
-    def generate_private_key(cls):
+    def generate_private_key(cls) -> _RSAPrivateKey:
+        """
+        Generates private key
+        """
         return rsa.generate_private_key(
                 public_exponent=65537,
                 key_size=2048,
@@ -70,7 +82,10 @@ class Blockchain:
             )
     
     @classmethod
-    def generate_public_key(cls, private_key):
+    def generate_public_key(cls, private_key: _RSAPrivateKey):
+        """
+        Generates public key
+        """
         return private_key.public_key()
 
     def add_transaction(self, transaction: Transaction) -> bool:
@@ -124,7 +139,7 @@ class Blockchain:
         Mines a new block with a Proof of Work and adds it to the chain.
         """
 
-        if self.pending_transactions != []:
+        if len(self.pending_transactions) > 0:
             new_id = self.last_block.block_id + 1
             prev_hash = self.last_block.compute_hash()
             block = Block(new_id, self.pending_transactions,
@@ -134,6 +149,10 @@ class Blockchain:
             self.pending_transactions = []
 
     def verify_chain(self) -> bool:
+        """
+        Verifies if chain is valid
+        """
+        
         for i in range(1, len(self.chain)):
             if self.chain[i].prev_hash != self.chain[i-1].compute_hash():
                 return False
