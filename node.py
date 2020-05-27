@@ -139,22 +139,21 @@ def rest_api():
             t.sign(b.private_key)
             b.add_transaction(t)
             print("Added transaction")
-            return str(0)
+            return "reload"
 
         elif action == "mine":
             b.mine()
-            return str(0)
+            return "reload"
 
         elif action == "verify_chain":
-            return json.dumps(b.verify_chain())
+            return str(int(b.verify_chain()))
 
         else:
             print(action)
             print(request.json)
     except Exception as ke:
         raise ke
-    finally:
-        return index()
+        return str(1)
 
 
 if __name__ == '__main__':
