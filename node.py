@@ -37,14 +37,15 @@ def test_data():
                         )
         t.sign(b.private_key)
         b.add_transaction(t)
-    
+
     peers.append("127.0.0.1:5000")
 
 if len(sys.argv) == 1:
-        port = 5000
-        test_data()
+    port = 5000
+    test_data()
 else:
     port = sys.argv[-1]
+    peers.append("127.0.0.1:5000")
 
 @app.route('/', methods=['GET'])
 def index():
@@ -98,8 +99,7 @@ def index():
 
 @app.route("/network/")
 def network():
-    # todo implement connection
-    return "Not implemented"
+    return render_template('network.html', peers=peers)
 
 @app.route("/raw/")
 def raw():
@@ -138,7 +138,7 @@ def rest_api():
         action = request.json['action']
         print(action)
         req = request.json
-
+        print(request.remote_addr, request.environ['REMOTE_PORT'])
         if action == "get_chain":
             return b.toJSON()
         
