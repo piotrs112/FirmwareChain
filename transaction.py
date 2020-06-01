@@ -69,13 +69,20 @@ class Transaction:
             serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
         return b"%s%s%s%s" % (key, self.version.encode(), self.file_hash.encode(), self.filename.encode())
 
+
+    def numerize_public_key(self) -> str:
+        """
+        Returns public key in a numeric, human readable format
+        """
+        n = self.public_key.public_numbers().n
+        e = self.public_key.public_numbers().e
+        return f"{n}|{e}"
+
     def is_author_trusted(self):
         """
         Chcecks if author's public key is on the trusted list
         """
-        n = self.public_key.public_numbers().n
-        e = self.public_key.public_numbers().e
-        credentials = f"{n}|{e}"
+        credentials = self.numerize_public_key()
 
         with open("trusted_keys.json", "r") as file:
             if credentials in file.read().splitlines():
@@ -92,3 +99,19 @@ class Transaction:
             return self.signature is not None
         except:
             return False
+
+    def toJSON(self):
+        """
+        Serialize transaction to JSON format
+        """
+        try:
+            signature = self.signature
+        except AttributeError:
+            signature = None
+        return json.dumps({
+            "public_key": self.numerize_public_key(),
+            "version": self.version,
+            "file_hash": self.file_hash,
+            "filename": self.filename,
+            #"signature": signature # todo fix it it's important 
+        })

@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Dict, Tuple
 import os
+import json
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -22,7 +23,7 @@ class Blockchain:
 
         self.chain = []
         self.pending_transactions = []
-        genesis_block = Block(0, [], "0", "0")
+        genesis_block = Block(0, [], datetime.now(), "0")
         self.chain.append(genesis_block)
 
         # generate private key and public key if not found
@@ -163,3 +164,9 @@ class Blockchain:
             elif not self.chain[i].verify_block():
                 return False
         return True
+    
+    def toJSON(self):
+        """
+        Serializes chain to JSON format
+        """
+        return json.dumps([b.toJSON() for b in self.chain])

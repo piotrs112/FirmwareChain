@@ -62,4 +62,18 @@ class Block:
 
     @property
     def representation(self):
-        return f"{self.block_id}{self.prev_hash}{self.nonce}{self.merkle_root}{str(self.datetime)}"
+        return f"{self.block_id};{self.prev_hash};{self.nonce};{self.merkle_root};{str(self.datetime)}"
+
+    def toJSON(self):
+        """
+        Serialize block to JSON format
+        """
+        transactions = [t.toJSON() for t in self.transactions]
+
+        return json.dumps({
+            "block_id": self.block_id,
+            "transactions": transactions,
+            "datetime": self.datetime.timestamp(),
+            "prev_hash": self.prev_hash,
+            "nonce": self.nonce
+        })
