@@ -10,3 +10,4 @@ Lib/
 *.pem
 trusted_keys.json
 .pytest_cache
+test_*.py
