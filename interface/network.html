@@ -1,0 +1,43 @@
+{% extends 'index.html' %}
+
+{% block main %}
+<div class="row">
+    <!-- Blocks-->
+    <div class="container">
+        <h3>Peers</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>IP</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="peers_table">
+                {% for ip in peers %}
+                <tr>
+                    <td>{{ip}}</td>
+                    <td>
+                        <button onclick="get_chain('{{ip}}')" class="btn waves-ripple indigo">Get chain</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock main %}
+
+{% block floating %}
+{% endblock floating %}
+
+{% block js %}
+function get_chain(ip){
+            if (confirm("Are you sure you want to overwrite your version of blockchain with one from " + ip + " ? This operation cannot be reversed.")){
+                console.log("Get_chain from" + ip);
+                var action = "set_chain";
+                var json = {};
+                json["ip"] = ip;
+                send({action: action, ip: ip});
+            }
+        } 
+{% endblock js %}
