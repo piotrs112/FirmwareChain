@@ -11,3 +11,4 @@ Lib/
 trusted_keys.json
 .pytest_cache
 test_*.py
+run.py
