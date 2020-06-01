@@ -1,5 +1,6 @@
 import json
 import sys
+import random
 from datetime import datetime
 
 from flask import (Flask, render_template, request)
@@ -8,6 +9,7 @@ from cryptography.hazmat.backends.openssl.rsa import (
 
 from blockchain import Blockchain
 from transaction import Transaction
+from test_json import get_chain
 
 app = Flask(__name__, template_folder="interface", static_folder="interface")
 
@@ -15,29 +17,34 @@ peers = []
 
 b = Blockchain()
 
-#test
-import random
+def test_data():
+    for i in range(16):
+        t = Transaction(b.public_key,
+                        str(random.randint(1, 10)),
+                        str(random.randint(2321343214, 93849309384793)),
+                        "main.h"
+                        )
+        t.sign(b.private_key)
+        b.add_transaction(t)
 
-for i in range(16):
-    t = Transaction(b.public_key,
-                     str(random.randint(1, 10)),
-                     str(random.randint(2321343214, 93849309384793)),
-                     "main.h"
-                     )
-    t.sign(b.private_key)
-    b.add_transaction(t)
+    b.mine()
 
-b.mine()
+    for i in range(6):
+        t = Transaction(b.public_key,
+                        str(random.randint(1, 10)),
+                        str(random.randint(2321343214, 93849309384793)),
+                        "main.h"
+                        )
+        t.sign(b.private_key)
+        b.add_transaction(t)
+    
+    peers.append("127.0.0.1:5000")
 
-for i in range(6):
-    t = Transaction(b.public_key,
-                     str(random.randint(1, 10)),
-                     str(random.randint(2321343214, 93849309384793)),
-                     "main.h"
-                     )
-    t.sign(b.private_key)
-    b.add_transaction(t)
-
+if len(sys.argv) == 1:
+        port = 5000
+        test_data()
+else:
+    port = sys.argv[-1]
 
 @app.route('/', methods=['GET'])
 def index():
@@ -45,8 +52,10 @@ def index():
     Returns index page
     """
 
-    data = []
-    head = b.chain[0].__dict__.keys()
+    data = [] # Stores data for tables
+    head = b.chain[0].__dict__.keys() # Blockchain table headers
+
+    # Prepare blocks data for table
     for block in b.chain:
         line = []
         for v in block.__dict__.values():
@@ -58,6 +67,7 @@ def index():
                 line.append(v)
         data.append(line)
 
+    # Prepare pending tansactions data for table
     if len(b.pending_transactions) > 0:
         t_h = b.pending_transactions[0].__dict__.keys()
         p_t = []
@@ -75,10 +85,11 @@ def index():
                 else:
                     line.append(v)
             p_t.append(line)
-    else:
+    else: # if there are no pending transactions
         t_h = []
         p_t = []
 
+    # Renders the website
     return render_template("index.html",
                            blocks=data,
                            head=head,
@@ -129,8 +140,10 @@ def rest_api():
         req = request.json
 
         if action == "get_chain":
-            # todo: make Block serializable
-            return str(len(b.chain))
+            return b.toJSON()
+        
+        elif action == "get_peers":
+            return json.dumps(peers)
 
         elif action == "add_transaction":
             data = req["transaction"]
@@ -147,6 +160,11 @@ def rest_api():
 
         elif action == "verify_chain":
             return str(int(b.verify_chain()))
+        
+        elif action == "set_chain":
+            ip = req["ip"]
+            chain = get_chain(ip)
+            b.chain = chain
 
         else:
             print(action)
@@ -160,8 +178,4 @@ if __name__ == '__main__':
     """
     Run node on chosen port
     """
-    if len(sys.argv) == 1:
-        port = 5000
-    else:
-        port = sys.argv[-1]
     app.run(port=port)
