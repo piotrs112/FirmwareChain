@@ -18,9 +18,12 @@ def fromJSON(block_json):
     for t in block["transactions"]:
         t = json.loads(t)
         new_transaction = Transaction(None, int(t['version']), t['file_hash'], t['filename'])
+        if t['signature'] is not None:
+            new_transaction.signature = b''.fromhex(t['signature'])
         transactions.append(new_transaction)
     
     block['transactions'] = transactions
+    
     result_block = Block(
                 block["block_id"],
                 block["transactions"],
