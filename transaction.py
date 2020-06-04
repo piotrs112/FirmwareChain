@@ -105,7 +105,7 @@ class Transaction:
         Serialize transaction to JSON format
         """
         try:
-            signature = self.signature
+            signature = self.signature.hex()
         except AttributeError:
             signature = None
         return json.dumps({
@@ -113,5 +113,5 @@ class Transaction:
             "version": self.version,
             "file_hash": self.file_hash,
             "filename": self.filename,
-            #"signature": signature # todo fix it it's important 
+            "signature": signature
         })
