@@ -38,7 +38,7 @@ def test_data():
         t.sign(b.private_key)
         b.add_transaction(t)
 
-    peers.append("127.0.0.1:5000")
+    peers.append("127.0.0.1:5001")
 
 if len(sys.argv) == 1:
     port = 5000
