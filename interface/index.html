@@ -1,0 +1,156 @@
+<!doctype html>
+
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+
+    <title>Blockchain</title>
+    <meta name="author" content="piotrs112">
+    <!--Import Google Icon Font-->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!--Import materialize.css-->
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/materialize.min.css') }}"
+        media="screen,projection" />
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+
+    <!--Let browser know website is optimized for mobile-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+</head>
+
+<body>
+    <nav>
+        <div class="nav-wrapper indigo">
+            <a href="/" class="brand-logo">Blockchain</a>
+        </div>
+    </nav>
+
+    <div class="row">
+        <div class="col s12 m12 l10">
+        {% block main %}
+            <!-- Main container-->
+            <div class="row">
+                <!-- Blocks-->
+                <div class="container">
+                    <h3>Blocks</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                {% for h in head %}
+                                <th>{{ h }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for b in blocks %}
+                            <tr>
+                                {% for elem in b %}
+                                <td>{{elem}}</td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pending transactions-->
+            <div class="row">
+                <div class="container">
+                    <h3>Pending transactions</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                {% for h in transactions_head %}
+                                <th>{{ h }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for t in pending_transactions %}
+                            <tr>
+                                {% for elem in t %}
+                                <td>{{elem}}</td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endblock main %}
+    </div>
+    <!-- Action button -->
+    <div class="fixed-action-btn">
+        <a class="btn-floating btn-large red">
+            <i class="large material-icons">mode_edit</i>
+        </a>
+        <ul>
+            {% block floating %}
+            <li><a class="btn-floating green modal-trigger tooltipped" data-position="left" data-tooltip="New transaction" href="#modal1"><i class="material-icons">add</i></a></li>
+            <li><button onclick="mine()" class="btn-floating yellow darken-1 tooltipped" data-position="left" data-tooltip="Mine"><i class="material-icons">gavel</i></a></button>
+            <li><a href="/network/" class="btn-floating blue darken-1 tooltipped" data-position="left" data-tooltip="Network"><i class="material-icons">wifi</i></a></a>
+            {% endblock floating %}
+        </ul>
+    </div>
+
+    <!-- Add transaction modal -->
+    <div id="modal1" class="modal">
+        <div class="modal-content">
+            <h4>New transaction</h4>
+            <input type="text" name="version">Version</input>
+            <input type="text" name="filename">Filename</input>
+            <input type="text" name="file_hash">Hash</input>
+        </div>
+        <div class="modal-footer">
+            <button onclick="add_transaction()" class="waves-effect waves-green btn-flat">Add</button>
+            <a class="modal-close waves-effect waves-red btn-flat">Cancel</a>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="{{ url_for('static', filename='js/materialize.min.js') }}"></script>
+    <script type="text/javascript">
+        M.AutoInit()
+        document.addEventListener('DOMContentLoaded', function() {
+            var elems = document.querySelectorAll('.modal');
+            var instances = M.Modal.init(elems, options);
+     });
+        
+        function send(data){
+            console.log("send")
+            var xmlhttp = new XMLHttpRequest();   // new HttpRequest instance 
+            xmlhttp.onreadystatechange = function () {
+                if (this.readyState == 4 && this.status == 200) {
+                    var response = this.responseText;
+                    if (response == "reload"){
+                        location.reload()
+                    }
+                }
+            }
+            
+            xmlhttp.open("POST", "/rest/", true);
+            xmlhttp.setRequestHeader("Content-Type", "application/json");
+            xmlhttp.send(JSON.stringify(data));
+        }
+        {% block js %}
+        function add_transaction(){
+            console.log("Add transaction")
+            var action = "add_transaction";
+            var transaction = {}
+            transaction["filename"] = document.getElementsByName("filename")[0].value
+            transaction["version"] = document.getElementsByName("version")[0].value
+            transaction["file_hash"] = document.getElementsByName("file_hash")[0].value
+            send({action: action, transaction: transaction})
+        }
+
+        function mine(){
+            console.log("Mine")
+            send({action: "mine"})
+        }
+        {% endblock js %}
+    </script>
+</body>
+
+</html>

@@ -7,3 +7,8 @@ Lib/
 # VS Code
 *.code-workspace
 .vscode
+*.pem
+trusted_keys.json
+.pytest_cache
+test_transaction.py
+run.py
