@@ -44,7 +44,7 @@ if len(sys.argv) == 1:
     port = 5000
     test_data()
 else:
-    port = sys.argv[-1]
+    port = int(sys.argv[-1])
     peers.append("127.0.0.1:5000")
 
 @app.route('/', methods=['GET'])
@@ -178,4 +178,4 @@ if __name__ == '__main__':
     """
     Run node on chosen port
     """
-    app.run(port=port)
+    app.run(port=int(port))
