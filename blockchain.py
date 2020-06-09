@@ -24,6 +24,7 @@ class Blockchain:
         self.chain = []
         self.pending_transactions = []
         genesis_block = Block(0, [], datetime.now(), "0")
+        genesis_block, new_hash = self.proof_of_work(genesis_block)
         self.chain.append(genesis_block)
 
         # generate private key and public key if not found
