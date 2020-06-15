@@ -62,7 +62,7 @@ class Block:
 
     @property
     def representation(self):
-        return f"{self.block_id};{self.prev_hash};{self.nonce};{self.merkle_root};{str(self.datetime)}"
+        return f"{self.prev_hash};{self.nonce};{self.merkle_root}"
 
     def toJSON(self):
         """
