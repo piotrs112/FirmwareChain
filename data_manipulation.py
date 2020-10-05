@@ -5,7 +5,7 @@ from block import Block
 from transaction import Transaction
 
 
-def fromJSON(block_json):
+def fromJSON(block_json: str) -> Block:
     """
     Returns Block object from json data
     """
@@ -16,11 +16,7 @@ def fromJSON(block_json):
 
     transactions = []
     for t in block["transactions"]:
-        t = json.loads(t)
-        new_transaction = Transaction(None, int(t['version']), t['file_hash'], t['filename'])
-        if t['signature'] is not None:
-            new_transaction.signature = b''.fromhex(t['signature'])
-        transactions.append(new_transaction)
+        transactions.append(transaction_fromJSON(t))
     
     block['transactions'] = transactions
     
@@ -33,6 +29,13 @@ def fromJSON(block_json):
     result_block.nonce = block["nonce"]
 
     return result_block
+
+def transaction_fromJSON(t: str) -> Transaction:
+    t = json.loads(t)
+    new_transaction = Transaction(None, int(t['version']), t['file_hash'], t['filename'])
+    if t['signature'] is not None:
+        new_transaction.signature = b''.fromhex(t['signature'])
+    return new_transaction
 
 
 def get_chain(ip):
