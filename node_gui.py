@@ -6,46 +6,48 @@ from datetime import datetime
 from flask import (Flask, render_template, request)
 from cryptography.hazmat.backends.openssl.rsa import (
     _RSAPrivateKey, _RSAPublicKey)
+import py2p
 
 from blockchain import Blockchain
 from transaction import Transaction
-from test_json import get_chain
+from data_manipulation import get_chain
 
 app = Flask(__name__, template_folder="interface", static_folder="interface")
 
-peers = []
-
-b = Blockchain()
-
-def test_data():
-    for i in range(16):
-        t = Transaction(b.public_key,
-                        str(random.randint(1, 10)),
-                        str(random.randint(2321343214, 93849309384793)),
-                        "main.h"
-                        )
-        t.sign(b.private_key)
-        b.add_transaction(t)
-
-    b.mine()
-
-    for i in range(6):
-        t = Transaction(b.public_key,
-                        str(random.randint(1, 10)),
-                        str(random.randint(2321343214, 93849309384793)),
-                        "main.h"
-                        )
-        t.sign(b.private_key)
-        b.add_transaction(t)
-
-    peers.append("127.0.0.1:5001")
-
 if len(sys.argv) == 1:
     port = 5000
-    test_data()
+    #test_data()
 else:
     port = int(sys.argv[-1])
-    peers.append("127.0.0.1:5000")
+    #peers.append("127.0.0.1:5000")
+
+
+sock = py2p.MeshSocket('0.0.0.0', int(port), prot=py2p.Protocol('mesh', 'SSL'))
+
+b = Blockchain(sock)
+
+# def test_data():
+#     for i in range(16):
+#         t = Transaction(b.public_key,
+#                         str(random.randint(1, 10)),
+#                         str(random.randint(2321343214, 93849309384793)),
+#                         "main.h"
+#                         )
+#         t.sign(b.private_key)
+#         b.add_transaction(t)
+
+#     b.mine()
+
+#     for i in range(6):
+#         t = Transaction(b.public_key,
+#                         str(random.randint(1, 10)),
+#                         str(random.randint(2321343214, 93849309384793)),
+#                         "main.h"
+#                         )
+#         t.sign(b.private_key)
+#         b.add_transaction(t)
+
+#     peers.append("127.0.0.1:5001")
 
 @app.route('/', methods=['GET'])
 def index():
@@ -99,7 +101,7 @@ def index():
 
 @app.route("/network/")
 def network():
-    return render_template('network.html', peers=peers)
+    return render_template('network.html', peers=sock.routing_table)
 
 @app.route("/raw/")
 def raw():
@@ -143,7 +145,7 @@ def rest_api():
             return b.toJSON()
         
         elif action == "get_peers":
-            return json.dumps(peers)
+            return json.dumps(sock.routing_table)
 
         elif action == "add_transaction":
             data = req["transaction"]
