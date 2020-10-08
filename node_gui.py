@@ -9,6 +9,7 @@ from cryptography.hazmat.backends.openssl.rsa import (
 import py2p
 
 from blockchain import Blockchain
+from node import Node
 from transaction import Transaction
 from data_manipulation import get_chain
 
@@ -22,9 +23,10 @@ else:
     #peers.append("127.0.0.1:5000")
 
 
-sock = py2p.MeshSocket('0.0.0.0', int(port), prot=py2p.Protocol('mesh', 'SSL'))
-
-b = Blockchain(sock)
+node = Node(port=int(port+1000))
+if port != 5000:
+    node.sock.connect('0.0.0.0', 6000)
+b = node.bc
 
 # def test_data():
 #     for i in range(16):
@@ -101,7 +103,7 @@ def index():
 
 @app.route("/network/")
 def network():
-    return render_template('network.html', peers=sock.routing_table)
+    return render_template('network.html', peers=node.sock.routing_table)
 
 @app.route("/raw/")
 def raw():
@@ -145,7 +147,7 @@ def rest_api():
             return b.toJSON()
         
         elif action == "get_peers":
-            return json.dumps(sock.routing_table)
+            return json.dumps(node.sock.routing_table)
 
         elif action == "add_transaction":
             data = req["transaction"]
