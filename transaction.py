@@ -5,6 +5,7 @@ from cryptography.hazmat.backends.openssl.rsa import (_RSAPrivateKey,
                                                       _RSAPublicKey)
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
 
 
 class Transaction:
@@ -56,7 +57,7 @@ class Transaction:
                 ),
                 hashes.SHA256()
             )
-        except InvalidSignature:
+        except (InvalidSignature, AttributeError):
             return False
         return True
 
@@ -77,6 +78,14 @@ class Transaction:
         n = self.public_key.public_numbers().n
         e = self.public_key.public_numbers().e
         return f"{n}|{e}"
+    
+    @classmethod
+    def denumerize_public_key(self, key_numeric: str) -> _RSAPublicKey:
+        """
+        Returns public key from a numeric format
+        """
+        n, e = key_numeric.split('|')
+        return RSAPublicNumbers(int(e), int(n)).public_key()
 
     def is_author_trusted(self):
         """

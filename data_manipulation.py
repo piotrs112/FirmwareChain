@@ -32,7 +32,8 @@ def fromJSON(block_json: str) -> Block:
 
 def transaction_fromJSON(t: str) -> Transaction:
     t = json.loads(t)
-    new_transaction = Transaction(None, int(t['version']), t['file_hash'], t['filename'])
+    pub_key = Transaction.denumerize_public_key(t['public_key'])
+    new_transaction = Transaction(pub_key, t['version'], t['file_hash'], t['filename']) #todo add signature parsing
     if t['signature'] is not None:
         new_transaction.signature = b''.fromhex(t['signature'])
     return new_transaction
