@@ -9,6 +9,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.backends.openssl.rsa import (_RSAPrivateKey,
                                                       _RSAPublicKey)
 import py2p
+from merklelib import MerkleTree
 
 from block import Block
 from transaction import Transaction
@@ -117,6 +118,7 @@ class Blockchain:
             
         return self.add_transaction(transaction)
 
+    #todo change algorithm
     def proof_of_work(self, block) -> Tuple[Block, str]:
         """
         Computes hash until it has a proper number of leading zeros by increasing nonce.
@@ -140,7 +142,8 @@ class Blockchain:
         Mines a new block with a Proof of Work and adds it to the chain.
         """
 
-        if len(self.pending_transactions) > 0:
+        if n_trans:=len(self.pending_transactions) > 0:
+            self.sock.send(n_trans, type='start_mining')
             new_id = self.last_block.block_id + 1
             prev_hash = self.last_block.compute_hash()
             time = datetime.now()
@@ -166,6 +169,13 @@ class Blockchain:
             elif not self.chain[i].verify_block():
                 return False
         return True
+    
+    @property
+    def blockchain_root(self) -> str:
+        """
+        Calculates merkle tree root of the whole blockchain
+        """
+        return MerkleTree(self.chain).merkle_root
         
     def toJSON(self):
         """
