@@ -1,6 +1,7 @@
 import sys
 
 import py2p
+from scapy.all import ARP, Ether, srp
 
 from blockchain import Blockchain
 from data_manipulation import transaction_fromJSON
@@ -42,8 +43,25 @@ class Node:
         pass
     
     def discovery(self):
-        #todo ping same port on every ip on lan
-        pass
+        """
+        Run local network discovery. Requires root priviledges.
+        """
+        target_ip = '192.168.0.1/24' #todo get ip address automatically
+        arp = ARP(pdst=target_ip)
+        ether = Ether(dst='ff:ff:ff:ff:ff:ff')
+        packet = ether/arp
+        try:
+            result = srp(packet, timeout=10)[0]
+        except PermissionError:
+            print(bcolors.FAIL + "Operation not permitted. Run node as root." + bcolors.ENDC)
+            return
+
+        for sent, received in result:
+            try:
+                print(received.psrc)
+                node.sock.connect(received.psrc, 4444)
+            except (ConnectionRefusedError): #todo catch timeout
+                pass
 
 class bcolors:
     HEADER = '\033[95m'
@@ -86,3 +104,7 @@ if __name__ == "__main__":
                 node.sock.connect(str(ip), int(port))
             except ConnectionRefusedError:
                 print(bcolors.FAIL+"Couldn't connect to peer"+bcolors.ENDC)
+        elif i == "discovery":
+            node.discovery()
+        else:
+            "Wrong command."
