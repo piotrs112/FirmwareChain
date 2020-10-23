@@ -91,7 +91,16 @@ if __name__ == "__main__":
             print(bcolors.FAIL+"Couldn't connect to peer"+bcolors.ENDC)
 
     while i:=input():
-        if i == 'exit' or i == 'e':
+        if i == 'h' or i=='help':
+            print(bcolors.BOLD+
+            """
+            exit
+            status
+            peers
+            connect <ip_address:port>
+            discovery
+            """+bcolors.ENDC)
+        elif i == 'exit' or i == 'e':
             node.sock.close()
             exit()
         elif i == 'status':
