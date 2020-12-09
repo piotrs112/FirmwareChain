@@ -1,11 +1,16 @@
+#!/usr/bin/env python3
 import sys
 
 import py2p
 from scapy.all import ARP, Ether, srp
 
 from blockchain import Blockchain
-from data_manipulation import transaction_fromJSON
+from transaction import Transaction
+from data_manipulation import transaction_fromJSON, fromJSON
 
+def exit_function():
+    node.sock.close()
+    exit()
 
 class Node:
     """
@@ -20,27 +25,50 @@ class Node:
         # Attach listener to connection event
         self.sock.on('connect', self.on_connect)
         self.sock.once('connect', self.once_connect)
+        self.longest_chain = 1
+        self.longest_chain_owner = None
 
     def handle_incoming(self, msg: py2p.base.Message, handler):
         """
         Handles incoming messages
         """
+        print(msg.packets)
         if msg.packets[0] == 'new_transaction':
             for t in msg.packets[1:]:
                 try:
-                    self.bc.add_transaction(transaction_fromJSON(t))
+                    transaction = transaction_fromJSON(t)
+                    if transaction not in self.bc.pending_transactions:
+                        self.bc.add_transaction(transaction)
                 except Exception as e:
                     print(e.with_traceback())
-        elif msg.packets[0] == 'mining_finished':
+
+        elif msg.packets[0] == 'mined':
             print("Stop mining! Someone else was first :(")
-            # Handle mined notion/block
+            new_block = fromJSON(msg.packets[1])
+            if new_block.verify_block():
+                print(bcolors.FAIL + "Invalid transaction!" + bcolors.ENDC)
+                #todo dont add block if invalid
+    
+            node.bc.chain.append(new_block)
+            for t in node.bc.pending_transactions:
+                if t in new_block.transactions:
+                    node.bc.pending_transactions.remove(t)
+            
+        elif msg.packets[0] == 'get_chain_length':
+            msg.reply(type=b'whisper', packets=len(self.bc.chain), sender=msg.sender)
+
+        elif msg.packets[0] == 'set_chain_length':
+     #todo podmiana od razu czy po czasie?       if msg.packets[1] > self.longest_chain:
+                self.longest_chain = msg.packets[1]
+                self.longest_chain_owner == msg.sender
+                
+                print(f"{self.longest_chain} {self.longest_chain_owner}")
 
     def on_connect(self, sock: py2p.MeshSocket):
-        print(f"New connection, total: {len(self.sock.routing_table)}")
+        print(f"New connection, total: {len(self.sock.routing_table)}") #todo fix len()
 
     def once_connect(self, sock):
-        #todo get longest blockchain
-        pass
+        self.sock.send(type='get_chain_length')
     
     def discovery(self):
         """
@@ -90,30 +118,76 @@ if __name__ == "__main__":
         except ConnectionRefusedError:
             print(bcolors.FAIL+"Couldn't connect to peer"+bcolors.ENDC)
 
-    while i:=input():
-        if i == 'h' or i=='help':
-            print(bcolors.BOLD+
-            """
-            exit
-            status
-            peers
-            connect <ip_address:port>
-            discovery
-            """+bcolors.ENDC)
-        elif i == 'exit' or i == 'e':
-            node.sock.close()
-            exit()
-        elif i == 'status':
-            print(bcolors.OKBLUE+ node.sock.status+bcolors.ENDC)
-        elif i == 'peers':
-            print(bcolors.OKBLUE+node.sock.routing_table+bcolors.ENDC)
-        elif i.startswith('connect '):
-            ip, port = i.split(" ")[1].split(':')
-            try:
-                node.sock.connect(str(ip), int(port))
-            except ConnectionRefusedError:
-                print(bcolors.FAIL+"Couldn't connect to peer"+bcolors.ENDC)
-        elif i == "discovery":
-            node.discovery()
+    try:
+        while True:
+            i = input()
+            if i == 'h' or i=='help':
+                print(bcolors.BOLD+
+                """
+                exit
+                status
+                peers
+                connect <ip_address:port>
+                discovery
+                id
+                msg <params>
+                stats
+                mine
+                add_test_transaction
+                """+bcolors.ENDC)
+
+            elif i == 'exit' or i == 'e' or i == 'quit' or i == 'q':
+                exit_function()
+
+            elif i == 'status':
+                print(bcolors.OKBLUE + str(node.sock.status) + bcolors.ENDC)
+
+            elif i == 'peers':
+                print(bcolors.OKBLUE + str([str(k)[2:-1] for k in node.sock.routing_table]) + bcolors.ENDC)
+
+            elif i.startswith('connect '):
+                try:
+                    ip, port = i.split(" ")[1].split(':')
+                except ValueError:
+                    ip = "localhost"
+                    port = i.split(" ")[1]
+
+                try:
+                    node.sock.connect(str(ip), int(port))
+                except ConnectionRefusedError:
+                    print(bcolors.FAIL + "Couldn't connect to peer" + bcolors.ENDC)
+
+            elif i == "discovery":
+                node.discovery()
+
+            elif i == 'id':
+                print(bcolors.OKBLUE + str(node.sock.id)[2:-1] + bcolors.ENDC)
+
+            elif i == 'stats':
+                print(bcolors.OKBLUE + "Chain: " + str(node.bc.chain))
+                print("Pending: " + str(node.bc.pending_transactions) + bcolors.ENDC)
+
+            elif i.startswith("msg"):
+                m = i.split(" ")
+                node.sock.send(packets=[str(j) for j in m[1:]], type=str(m))
+
+            elif i == 'mine':
+                node.bc.mine()
+
+            elif i == 'add_test_transaction' or i == 't':
+                transaction = Transaction(node.bc.public_key, "test", "hash", "test.name")
+                transaction.sign(node.bc.private_key)
+                node.bc.add_transaction(transaction)
+                print(bcolors.OKBLUE + "Transaction added" + bcolors.ENDC)
+
+            elif i == '':
+                pass
+
+            else:
+                print(bcolors.FAIL + "Wrong command." + bcolors.ENDC)
+
+    except Exception as e:
+        if type(e) is KeyboardInterrupt:
+            exit_function()
         else:
-            "Wrong command."
+            print(e.with_traceback())
