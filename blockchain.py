@@ -25,7 +25,7 @@ class Blockchain:
 
         self.chain = []
         self.pending_transactions = []
-        genesis_block = Block(0, [], datetime.now(), "0")
+        genesis_block = Block(0, [], datetime(2000, 1, 1, 0, 0), "0")
         genesis_block, new_hash = self.proof_of_work(genesis_block)
         self.chain.append(genesis_block)
         self.sock = sock
@@ -142,8 +142,7 @@ class Blockchain:
         Mines a new block with a Proof of Work and adds it to the chain.
         """
 
-        if n_trans:=len(self.pending_transactions) > 0:
-            self.sock.send(n_trans, type='start_mining')
+        if len(self.pending_transactions) > 0:
             new_id = self.last_block.block_id + 1
             prev_hash = self.last_block.compute_hash()
             time = datetime.now()
@@ -152,10 +151,10 @@ class Blockchain:
                           time, prev_hash)
             block, new_hash = self.proof_of_work(block)
             #Send out block
-            self.sock.send(block, flag='mined')
-
+            self.sock.send(block.toJSON(), type='mined')
             self.chain.append(block)
             self.pending_transactions = []
+            print("Mined")
 
     def verify_chain(self) -> bool:
         """
