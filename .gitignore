@@ -15,3 +15,4 @@ run.py
 catch_stack_exception.py
 p2p_playground.py
 log.txt
+*.png
