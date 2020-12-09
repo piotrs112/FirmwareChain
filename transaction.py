@@ -124,3 +124,8 @@ class Transaction:
             "filename": self.filename,
             "signature": signature
         })
+
+    def __eq__(self, other):
+        if self.filename == other.filename and self.version == other.version and self.file_hash == other.file_hash:
+            return True
+        else: return False
