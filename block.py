@@ -77,3 +77,6 @@ class Block:
             "prev_hash": self.prev_hash,
             "nonce": self.nonce
         })
+    
+    def __repr__(self):
+        return str(self)
