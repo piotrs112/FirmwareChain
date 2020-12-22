@@ -18,7 +18,7 @@ from transaction import Transaction
 class Blockchain:
     DIFFICULTY = 2 # Number of leading zeros required in hash
 
-    def __init__(self, sock: py2p.MeshSocket):
+    def __init__(self, sock: py2p.MeshSocket = None):
         """
         Blockchain class constructor
         """
@@ -100,7 +100,8 @@ class Blockchain:
         """
         if transaction.verify():
             self.pending_transactions.append(transaction)
-            self.sock.send(transaction.toJSON(), type='new_transaction')
+            if self.sock is not None:
+                self.sock.send(transaction.toJSON(), type='new_transaction')
             return True
         else: return False
 
@@ -129,6 +130,13 @@ class Blockchain:
             computed = block.compute_hash()
         return block, computed
 
+    def proof_of_authority(self):
+        """
+        Chooses miner based on their authority
+        """
+        #todo 
+        pass
+
     @property
     def last_block(self) -> Block:
         """
@@ -151,7 +159,8 @@ class Blockchain:
                           time, prev_hash)
             block, new_hash = self.proof_of_work(block)
             #Send out block
-            self.sock.send(block.toJSON(), type='mined')
+            if self.sock is not None:
+                self.sock.send(block.toJSON(), type='mined')
             self.chain.append(block)
             self.pending_transactions = []
             print("Mined")
