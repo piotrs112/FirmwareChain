@@ -129,3 +129,13 @@ class Transaction:
         if self.filename == other.filename and self.version == other.version and self.file_hash == other.file_hash:
             return True
         else: return False
+
+    def __repr__(self):
+        s = ""
+        if self.is_signed:
+            s += "Signed: "
+            s += str(hash(self.signature)) + " "
+        if self.verify():
+            s += "Verified"
+
+        return s
