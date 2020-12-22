@@ -2,7 +2,7 @@
 import sys
 
 import py2p
-from scapy.all import ARP, Ether, srp
+#from scapy.all import ARP, Ether, srp
 
 from blockchain import Blockchain
 from transaction import Transaction
@@ -46,13 +46,12 @@ class Node:
             print("Stop mining! Someone else was first :(")
             new_block = fromJSON(msg.packets[1])
             if new_block.verify_block():
-                print(bcolors.FAIL + "Invalid transaction!" + bcolors.ENDC)
-                #todo dont add block if invalid
-    
-            node.bc.chain.append(new_block)
-            for t in node.bc.pending_transactions:
-                if t in new_block.transactions:
-                    node.bc.pending_transactions.remove(t)
+                node.bc.chain.append(new_block)
+                for t in node.bc.pending_transactions:
+                    if t in new_block.transactions:
+                        node.bc.pending_transactions.remove(t)
+            else:
+                print(bcolors.FAIL + "Invalid block!" + bcolors.ENDC)
             
         elif msg.packets[0] == 'get_chain_length':
             msg.reply(type=b'whisper', packets=len(self.bc.chain), sender=msg.sender)
@@ -67,29 +66,29 @@ class Node:
     def on_connect(self, sock: py2p.MeshSocket):
         print(f"New connection, total: {len(self.sock.routing_table)}") #todo fix len()
 
-    def once_connect(self, sock):
+    def once_connect(self, sock: py2p.MeshSocket):
         self.sock.send(type='get_chain_length')
     
-    def discovery(self):
-        """
-        Run local network discovery. Requires root priviledges.
-        """
-        target_ip = '192.168.0.1/24' #todo get ip address automatically
-        arp = ARP(pdst=target_ip)
-        ether = Ether(dst='ff:ff:ff:ff:ff:ff')
-        packet = ether/arp
-        try:
-            result = srp(packet, timeout=10)[0]
-        except PermissionError:
-            print(bcolors.FAIL + "Operation not permitted. Run node as root." + bcolors.ENDC)
-            return
+    # def discovery(self):
+    #     """
+    #     Run local network discovery. Requires root priviledges.
+    #     """
+    #     target_ip = '192.168.0.1/24' 
+    #     arp = ARP(pdst=target_ip)
+    #     ether = Ether(dst='ff:ff:ff:ff:ff:ff')
+    #     packet = ether/arp
+    #     try:
+    #         result = srp(packet, timeout=10)[0]
+    #     except PermissionError:
+    #         print(bcolors.FAIL + "Operation not permitted. Run node as root." + bcolors.ENDC)
+    #         return
 
-        for sent, received in result:
-            try:
-                print(received.psrc)
-                node.sock.connect(received.psrc, 4444)
-            except (ConnectionRefusedError): #todo catch timeout
-                pass
+    #     for sent, received in result:
+    #         try:
+    #             print(received.psrc)
+    #             node.sock.connect(received.psrc, 4444)
+    #         except (ConnectionRefusedError): 
+    #             pass
 
 class bcolors:
     HEADER = '\033[95m'
@@ -114,7 +113,7 @@ if __name__ == "__main__":
 
     if port != 6000:
         try:
-            node.sock.connect('0.0.0.0', 6000) # todo change when discovery is implmented
+            node.sock.connect('0.0.0.0', 6000)
         except ConnectionRefusedError:
             print(bcolors.FAIL+"Couldn't connect to peer"+bcolors.ENDC)
 
@@ -128,7 +127,6 @@ if __name__ == "__main__":
                 status
                 peers
                 connect <ip_address:port>
-                discovery
                 id
                 msg <params>
                 stats
@@ -157,8 +155,8 @@ if __name__ == "__main__":
                 except ConnectionRefusedError:
                     print(bcolors.FAIL + "Couldn't connect to peer" + bcolors.ENDC)
 
-            elif i == "discovery":
-                node.discovery()
+            # elif i == "discovery":
+            #     node.discovery()
 
             elif i == 'id':
                 print(bcolors.OKBLUE + str(node.sock.id)[2:-1] + bcolors.ENDC)
@@ -179,6 +177,9 @@ if __name__ == "__main__":
                 transaction.sign(node.bc.private_key)
                 node.bc.add_transaction(transaction)
                 print(bcolors.OKBLUE + "Transaction added" + bcolors.ENDC)
+
+            elif i == 'last block' or i == 'lb':
+                print(node.bc.last_block.toJSON())
 
             elif i == '':
                 pass
