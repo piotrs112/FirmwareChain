@@ -2,15 +2,19 @@
 import sys
 
 import py2p
-#from scapy.all import ARP, Ether, srp
 
 from blockchain import Blockchain
 from transaction import Transaction
 from data_manipulation import transaction_fromJSON, fromJSON
 
+
 def exit_function():
+    """
+    Close connection safely and exit
+    """
     node.sock.close()
     exit()
+
 
 class Node:
     """
@@ -18,21 +22,32 @@ class Node:
     """
 
     def __init__(self, port=4444):
-        self.sock = py2p.MeshSocket('0.0.0.0', port, py2p.Protocol('mesh', 'SSL'))
+        """
+        Initialize node.
+        :param port: Port on which the node's socket will be operating
+        """
+        self.sock = py2p.MeshSocket(
+            '0.0.0.0', port, py2p.Protocol('mesh', 'SSL'))
         self.bc = Blockchain(self.sock)
         self.sock.register_handler(self.handle_incoming)
 
         # Attach listener to connection event
         self.sock.on('connect', self.on_connect)
         self.sock.once('connect', self.once_connect)
+
         self.longest_chain = 1
         self.longest_chain_owner = None
 
     def handle_incoming(self, msg: py2p.base.Message, handler):
         """
         Handles incoming messages
+        :param msg: Incoming message
+        :param handler: Handler function
         """
-        print(msg.packets)
+
+        print(msg.packets)  # todo del after dev
+
+        # Add new transaction
         if msg.packets[0] == 'new_transaction':
             for t in msg.packets[1:]:
                 try:
@@ -42,8 +57,8 @@ class Node:
                 except Exception as e:
                     print(e.with_traceback())
 
+        # Mined new block
         elif msg.packets[0] == 'mined':
-            print("Stop mining! Someone else was first :(")
             new_block = fromJSON(msg.packets[1])
             if new_block.verify_block():
                 node.bc.chain.append(new_block)
@@ -52,45 +67,41 @@ class Node:
                         node.bc.pending_transactions.remove(t)
             else:
                 print(bcolors.FAIL + "Invalid block!" + bcolors.ENDC)
-            
-        elif msg.packets[0] == 'get_chain_length':
-            msg.reply(type=b'whisper', packets=len(self.bc.chain), sender=msg.sender)
 
+        # Someone asking for chain length
+        elif msg.packets[0] == 'get_chain_length':
+            msg.reply(type=b'whisper', packets=len(
+                self.bc.chain), sender=msg.sender)
+
+        # Someone sending chain length
         elif msg.packets[0] == 'set_chain_length':
-     #todo podmiana od razu czy po czasie?       if msg.packets[1] > self.longest_chain:
+            # todo podmiana od razu czy po czasie?
+            if msg.packets[1] > self.longest_chain:
                 self.longest_chain = msg.packets[1]
                 self.longest_chain_owner == msg.sender
-                
+
                 print(f"{self.longest_chain} {self.longest_chain_owner}")
 
     def on_connect(self, sock: py2p.MeshSocket):
-        print(f"New connection, total: {len(self.sock.routing_table)}") #todo fix len()
+        """
+        What to do on every single new connection
+        :param sock: Mesh socket object
+        """
+        print(
+            f"New connection, total: {len(self.sock.routing_table)}")  # todo fix len()
 
     def once_connect(self, sock: py2p.MeshSocket):
+        """
+        What to do on the first connections
+        :param sock: Mesh socket object
+        """
         self.sock.send(type='get_chain_length')
-    
-    # def discovery(self):
-    #     """
-    #     Run local network discovery. Requires root priviledges.
-    #     """
-    #     target_ip = '192.168.0.1/24' 
-    #     arp = ARP(pdst=target_ip)
-    #     ether = Ether(dst='ff:ff:ff:ff:ff:ff')
-    #     packet = ether/arp
-    #     try:
-    #         result = srp(packet, timeout=10)[0]
-    #     except PermissionError:
-    #         print(bcolors.FAIL + "Operation not permitted. Run node as root." + bcolors.ENDC)
-    #         return
 
-    #     for sent, received in result:
-    #         try:
-    #             print(received.psrc)
-    #             node.sock.connect(received.psrc, 4444)
-    #         except (ConnectionRefusedError): 
-    #             pass
 
 class bcolors:
+    """
+    Color helpers for displaying data in console
+    """
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKGREEN = '\033[92m'
@@ -100,7 +111,11 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+
 if __name__ == "__main__":
+    """
+    Main function run at script execution
+    """
     # Run without arguments
     if len(sys.argv) == 1:
         port = 6000
@@ -108,6 +123,7 @@ if __name__ == "__main__":
     else:
         port = int(sys.argv[-1])
 
+    # Communications setup
     node = Node(port=port)
     print(bcolors.OKGREEN + "Node setup done." + bcolors.ENDC)
 
@@ -117,12 +133,13 @@ if __name__ == "__main__":
         except ConnectionRefusedError:
             print(bcolors.FAIL+"Couldn't connect to peer"+bcolors.ENDC)
 
+    # Console handler
     try:
         while True:
             i = input()
-            if i == 'h' or i=='help':
-                print(bcolors.BOLD+
-                """
+            if i == 'h' or i == 'help':
+                print(bcolors.BOLD +
+                      """
                 exit
                 status
                 peers
@@ -141,7 +158,8 @@ if __name__ == "__main__":
                 print(bcolors.OKBLUE + str(node.sock.status) + bcolors.ENDC)
 
             elif i == 'peers':
-                print(bcolors.OKBLUE + str([str(k)[2:-1] for k in node.sock.routing_table]) + bcolors.ENDC)
+                print(bcolors.OKBLUE + str([str(k)[2:-1]
+                                            for k in node.sock.routing_table]) + bcolors.ENDC)
 
             elif i.startswith('connect '):
                 try:
@@ -154,9 +172,6 @@ if __name__ == "__main__":
                     node.sock.connect(str(ip), int(port))
                 except ConnectionRefusedError:
                     print(bcolors.FAIL + "Couldn't connect to peer" + bcolors.ENDC)
-
-            # elif i == "discovery":
-            #     node.discovery()
 
             elif i == 'id':
                 print(bcolors.OKBLUE + str(node.sock.id)[2:-1] + bcolors.ENDC)
@@ -173,7 +188,8 @@ if __name__ == "__main__":
                 node.bc.mine()
 
             elif i == 'add_test_transaction' or i == 't':
-                transaction = Transaction(node.bc.public_key, "test", "hash", "test.name")
+                transaction = Transaction(
+                    node.bc.public_key, "test", "hash", "test.name")
                 transaction.sign(node.bc.private_key)
                 node.bc.add_transaction(transaction)
                 print(bcolors.OKBLUE + "Transaction added" + bcolors.ENDC)

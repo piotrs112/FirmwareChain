@@ -1,55 +1,30 @@
 import json
-import sys
 import random
+import sys
 from datetime import datetime
 
-from flask import (Flask, render_template, request)
-from cryptography.hazmat.backends.openssl.rsa import (
-    _RSAPrivateKey, _RSAPublicKey)
 import py2p
+from cryptography.hazmat.backends.openssl.rsa import (_RSAPrivateKey,
+                                                      _RSAPublicKey)
+from flask import Flask, render_template, request
 
 from blockchain import Blockchain
+from data_manipulation import get_chain
 from node import Node
 from transaction import Transaction
-from data_manipulation import get_chain
 
 app = Flask(__name__, template_folder="interface", static_folder="interface")
 
 if len(sys.argv) == 1:
     port = 5000
-    #test_data()
 else:
     port = int(sys.argv[-1])
-    #peers.append("127.0.0.1:5000")
 
 
 node = Node(port=int(port+1000))
 if port != 5000:
     node.sock.connect('0.0.0.0', 6000)
 b = node.bc
-
-# def test_data():
-#     for i in range(16):
-#         t = Transaction(b.public_key,
-#                         str(random.randint(1, 10)),
-#                         str(random.randint(2321343214, 93849309384793)),
-#                         "main.h"
-#                         )
-#         t.sign(b.private_key)
-#         b.add_transaction(t)
-
-#     b.mine()
-
-#     for i in range(6):
-#         t = Transaction(b.public_key,
-#                         str(random.randint(1, 10)),
-#                         str(random.randint(2321343214, 93849309384793)),
-#                         "main.h"
-#                         )
-#         t.sign(b.private_key)
-#         b.add_transaction(t)
-
-#     peers.append("127.0.0.1:5001")
 
 @app.route('/', methods=['GET'])
 def index():

@@ -10,7 +10,7 @@ from transaction import Transaction
 
 class Block:
     """
-        Block class.
+    Block class.
     """
 
     def __init__(self, block_id: int, transactions: List[Transaction], datetime: datetime, prev_hash: str):
@@ -38,16 +38,16 @@ class Block:
         block = self.toJSON()
         sha = hashlib.sha256(block.encode()).hexdigest()
         return sha
-    
+
     def verify_block(self) -> bool:
         """
         Verifies block and all its transactions
         """
-        
+
         for transaction in self.transactions:
             if not transaction.verify():
                 return False
-                
+
         return True
 
     @property
@@ -75,6 +75,9 @@ class Block:
             "prev_hash": self.prev_hash,
             "nonce": self.nonce
         })
-    
+
     def __repr__(self):
+        """
+        Returns block representation
+        """
         return str(self)

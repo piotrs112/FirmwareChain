@@ -16,7 +16,10 @@ from transaction import Transaction
 
 
 class Blockchain:
-    DIFFICULTY = 2 # Number of leading zeros required in hash
+    """
+    Stores and manages blocks and transactions
+    """
+    DIFFICULTY = 2  # Number of leading zeros required in hash
 
     def __init__(self, sock: py2p.MeshSocket = None):
         """
@@ -81,15 +84,16 @@ class Blockchain:
         Generates private key
         """
         return rsa.generate_private_key(
-                public_exponent=65537,
-                key_size=2048,
-                backend=default_backend()
-            )
-    
+            public_exponent=65537,
+            key_size=2048,
+            backend=default_backend()
+        )
+
     @classmethod
     def generate_public_key(cls, private_key: _RSAPrivateKey):
         """
         Generates public key
+        :param private_key: Private key to generate public key from
         """
         return private_key.public_key()
 
@@ -103,7 +107,8 @@ class Blockchain:
             if self.sock is not None:
                 self.sock.send(transaction.toJSON(), type='new_transaction')
             return True
-        else: return False
+        else:
+            return False
 
     def add_transaction_from_dict(self, d: Dict[str, str]) -> bool:
         """
@@ -111,18 +116,19 @@ class Blockchain:
         :param d: Dictionary with keys: version, filename, file_hash
         """
         transaction = Transaction(
-            self.public_key, 
-            d["version"], 
+            self.public_key,
+            d["version"],
             d["file_hash"],
             d["filename"]
-            )
-            
+        )
+
         return self.add_transaction(transaction)
 
-    #todo change algorithm
+    # todo change algorithm
     def proof_of_work(self, block) -> Tuple[Block, str]:
         """
         Computes hash until it has a proper number of leading zeros by increasing nonce.
+        :param block: Block object whose hash will be computed
         """
         computed = block.compute_hash()
         while not computed.startswith('0' * self.DIFFICULTY):
@@ -134,7 +140,7 @@ class Blockchain:
         """
         Chooses miner based on their authority
         """
-        #todo 
+        # todo
         pass
 
     @property
@@ -158,7 +164,7 @@ class Blockchain:
             block = Block(new_id, self.pending_transactions,
                           time, prev_hash)
             block, new_hash = self.proof_of_work(block)
-            #Send out block
+            # Send out block
             if self.sock is not None:
                 self.sock.send(block.toJSON(), type='mined')
             self.chain.append(block)
@@ -177,14 +183,14 @@ class Blockchain:
             elif not self.chain[i].verify_block():
                 return False
         return True
-    
+
     @property
     def blockchain_root(self) -> str:
         """
         Calculates merkle tree root of the whole blockchain
         """
         return MerkleTree(self.chain).merkle_root
-        
+
     def toJSON(self):
         """
         Serializes chain to JSON format
