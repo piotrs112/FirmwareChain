@@ -12,3 +12,7 @@ trusted_keys.json
 .pytest_cache
 test_transaction.py
 run.py
+catch_stack_exception.py
+p2p_playground.py
+log.txt
+*.png

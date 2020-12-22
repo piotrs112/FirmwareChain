@@ -10,7 +10,7 @@ from transaction import Transaction
 
 class Block:
     """
-        Block class.
+    Block class.
     """
 
     def __init__(self, block_id: int, transactions: List[Transaction], datetime: datetime, prev_hash: str):
@@ -34,19 +34,21 @@ class Block:
         Computes sha256 hash of the block.
         """
 
-        block = json.dumps(self.representation, sort_keys=True)
+        #block = json.dumps(self.representation, sort_keys=True)
+        block = self.toJSON()
         sha = hashlib.sha256(block.encode()).hexdigest()
         return sha
-    
+
     def verify_block(self) -> bool:
         """
         Verifies block and all its transactions
         """
-        
+
         for transaction in self.transactions:
             if not transaction.verify():
                 return False
-            return True
+
+        return True
 
     @property
     def merkle_root(self):
@@ -59,10 +61,6 @@ class Block:
 
     def __str__(self):
         return f"Block ID: {self.block_id}\nTransactions: {len(self.transactions)}\nHash: {self.compute_hash()}\nLast hash: {self.prev_hash}\n"
-
-    @property
-    def representation(self):
-        return f"{self.prev_hash};{self.nonce};{self.merkle_root}"
 
     def toJSON(self):
         """
@@ -77,3 +75,9 @@ class Block:
             "prev_hash": self.prev_hash,
             "nonce": self.nonce
         })
+
+    def __repr__(self):
+        """
+        Returns block representation
+        """
+        return str(self)

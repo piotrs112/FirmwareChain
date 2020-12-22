@@ -5,6 +5,7 @@ from cryptography.hazmat.backends.openssl.rsa import (_RSAPrivateKey,
                                                       _RSAPublicKey)
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
 
 
 class Transaction:
@@ -56,7 +57,7 @@ class Transaction:
                 ),
                 hashes.SHA256()
             )
-        except InvalidSignature:
+        except (InvalidSignature, AttributeError):
             return False
         return True
 
@@ -69,7 +70,6 @@ class Transaction:
             serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
         return b"%s%s%s%s" % (key, self.version.encode(), self.file_hash.encode(), self.filename.encode())
 
-
     def numerize_public_key(self) -> str:
         """
         Returns public key in a numeric, human readable format
@@ -77,6 +77,14 @@ class Transaction:
         n = self.public_key.public_numbers().n
         e = self.public_key.public_numbers().e
         return f"{n}|{e}"
+
+    @classmethod
+    def denumerize_public_key(self, key_numeric: str) -> _RSAPublicKey:
+        """
+        Returns public key from a numeric format
+        """
+        n, e = key_numeric.split('|')
+        return RSAPublicNumbers(int(e), int(n)).public_key()
 
     def is_author_trusted(self):
         """
@@ -115,3 +123,26 @@ class Transaction:
             "filename": self.filename,
             "signature": signature
         })
+
+    def __eq__(self, other):
+        """
+        Compare transactions
+        :param other: Transaction object to compare to
+        """
+        if self.filename == other.filename and self.version == other.version and self.file_hash == other.file_hash:
+            return True
+        else:
+            return False
+
+    def __repr__(self):
+        """
+        Representation for debuggin purposes
+        """
+        s = ""
+        if self.is_signed:
+            s += "Signed: "
+            s += str(hash(self.signature)) + " "
+        if self.verify():
+            s += "Verified"
+
+        return s

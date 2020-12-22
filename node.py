@@ -1,181 +1,210 @@
-import json
+#!/usr/bin/env python3
 import sys
-import random
-from datetime import datetime
 
-from flask import (Flask, render_template, request)
-from cryptography.hazmat.backends.openssl.rsa import (
-    _RSAPrivateKey, _RSAPublicKey)
+import py2p
 
 from blockchain import Blockchain
 from transaction import Transaction
-from test_json import get_chain
+from data_manipulation import transaction_fromJSON, fromJSON
 
-app = Flask(__name__, template_folder="interface", static_folder="interface")
 
-peers = []
-
-b = Blockchain()
-
-def test_data():
-    for i in range(16):
-        t = Transaction(b.public_key,
-                        str(random.randint(1, 10)),
-                        str(random.randint(2321343214, 93849309384793)),
-                        "main.h"
-                        )
-        t.sign(b.private_key)
-        b.add_transaction(t)
-
-    b.mine()
-
-    for i in range(6):
-        t = Transaction(b.public_key,
-                        str(random.randint(1, 10)),
-                        str(random.randint(2321343214, 93849309384793)),
-                        "main.h"
-                        )
-        t.sign(b.private_key)
-        b.add_transaction(t)
-
-    peers.append("127.0.0.1:5001")
-
-if len(sys.argv) == 1:
-    port = 5000
-    test_data()
-else:
-    port = int(sys.argv[-1])
-    peers.append("127.0.0.1:5000")
-
-@app.route('/', methods=['GET'])
-def index():
+def exit_function():
     """
-    Returns index page
+    Close connection safely and exit
+    """
+    node.sock.close()
+    exit()
+
+
+class Node:
+    """
+    Combining blockchain with secure P2P connectivity
     """
 
-    data = [] # Stores data for tables
-    head = b.chain[0].__dict__.keys() # Blockchain table headers
+    def __init__(self, port=4444):
+        """
+        Initialize node.
+        :param port: Port on which the node's socket will be operating
+        """
+        self.sock = py2p.MeshSocket(
+            '0.0.0.0', port, py2p.Protocol('mesh', 'SSL'))
+        self.bc = Blockchain(self.sock)
+        self.sock.register_handler(self.handle_incoming)
 
-    # Prepare blocks data for table
-    for block in b.chain:
-        line = []
-        for v in block.__dict__.values():
-            if type(v) is datetime:
-                line.append(v.strftime("%d/%m/%Y, %H:%M:%S"))
-            elif type(v) is list:
-                line.append(len(v))
+        # Attach listener to connection event
+        self.sock.on('connect', self.on_connect)
+        self.sock.once('connect', self.once_connect)
+
+        self.longest_chain = 1
+        self.longest_chain_owner = None
+
+    def handle_incoming(self, msg: py2p.base.Message, handler):
+        """
+        Handles incoming messages
+        :param msg: Incoming message
+        :param handler: Handler function
+        """
+
+        print(msg.packets)  # todo del after dev
+
+        # Add new transaction
+        if msg.packets[0] == 'new_transaction':
+            for t in msg.packets[1:]:
+                try:
+                    transaction = transaction_fromJSON(t)
+                    if transaction not in self.bc.pending_transactions:
+                        self.bc.add_transaction(transaction)
+                except Exception as e:
+                    print(e.with_traceback())
+
+        # Mined new block
+        elif msg.packets[0] == 'mined':
+            new_block = fromJSON(msg.packets[1])
+            if new_block.verify_block():
+                node.bc.chain.append(new_block)
+                for t in node.bc.pending_transactions:
+                    if t in new_block.transactions:
+                        node.bc.pending_transactions.remove(t)
             else:
-                line.append(v)
-        data.append(line)
+                print(bcolors.FAIL + "Invalid block!" + bcolors.ENDC)
 
-    # Prepare pending tansactions data for table
-    if len(b.pending_transactions) > 0:
-        t_h = b.pending_transactions[0].__dict__.keys()
-        p_t = []
-        for t in b.pending_transactions:
-            line = []
-            for v in t.__dict__.values():
-                if type(v) is _RSAPublicKey:
-                    if t.is_signed:
-                        signed = "Signed"
-                    else:
-                        signed = "Not signed"
-                    line.append(signed)
-                elif type(v) is bytes:
-                    line.append(hash(v))
-                else:
-                    line.append(v)
-            p_t.append(line)
-    else: # if there are no pending transactions
-        t_h = []
-        p_t = []
+        # Someone asking for chain length
+        elif msg.packets[0] == 'get_chain_length':
+            msg.reply(type=b'whisper', packets=len(
+                self.bc.chain), sender=msg.sender)
 
-    # Renders the website
-    return render_template("index.html",
-                           blocks=data,
-                           head=head,
-                           transactions_head=t_h,
-                           pending_transactions=p_t)
+        # Someone sending chain length
+        elif msg.packets[0] == 'set_chain_length':
+            # todo podmiana od razu czy po czasie?
+            if msg.packets[1] > self.longest_chain:
+                self.longest_chain = msg.packets[1]
+                self.longest_chain_owner == msg.sender
 
-@app.route("/network/")
-def network():
-    return render_template('network.html', peers=peers)
+                print(f"{self.longest_chain} {self.longest_chain_owner}")
 
-@app.route("/raw/")
-def raw():
-    data = []
-    head = b.chain[0].__dict__.keys()
-    for block in b.chain:
-        line = []
-        for v in block.__dict__.values():
-            line.append(v)
-        data.append(line)
+    def on_connect(self, sock: py2p.MeshSocket):
+        """
+        What to do on every single new connection
+        :param sock: Mesh socket object
+        """
+        print(
+            f"New connection, total: {len(self.sock.routing_table)}")  # todo fix len()
 
-    if len(b.pending_transactions) > 0:
-        t_h = b.pending_transactions[0].__dict__.keys()
-        p_t = []
-        for t in b.pending_transactions:
-            line = []
-            for v in t.__dict__.values():
-                line.append(v)
-            p_t.append(line)
+    def once_connect(self, sock: py2p.MeshSocket):
+        """
+        What to do on the first connections
+        :param sock: Mesh socket object
+        """
+        self.sock.send(type='get_chain_length')
+
+
+class bcolors:
+    """
+    Color helpers for displaying data in console
+    """
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+if __name__ == "__main__":
+    """
+    Main function run at script execution
+    """
+    # Run without arguments
+    if len(sys.argv) == 1:
+        port = 6000
+    # Run with arguments, last is the port nr
     else:
-        t_h = []
-        p_t = []
+        port = int(sys.argv[-1])
 
-    return json.dumps({"blocks": str(data),
-                       "head": str(head),
-                       "transactions_head": t_h,
-                       "pending_transactions": p_t})
+    # Communications setup
+    node = Node(port=port)
+    print(bcolors.OKGREEN + "Node setup done." + bcolors.ENDC)
 
+    if port != 6000:
+        try:
+            node.sock.connect('0.0.0.0', 6000)
+        except ConnectionRefusedError:
+            print(bcolors.FAIL+"Couldn't connect to peer"+bcolors.ENDC)
 
-@app.route('/rest/', methods=['POST'])
-def rest_api():
-    """
-    REST API for interacting with node
-    """
+    # Console handler
     try:
-        action = request.json['action']
-        print(action)
-        req = request.json
-        print(request.remote_addr, request.environ['REMOTE_PORT'])
-        if action == "get_chain":
-            return b.toJSON()
-        
-        elif action == "get_peers":
-            return json.dumps(peers)
+        while True:
+            i = input()
+            if i == 'h' or i == 'help':
+                print(bcolors.BOLD +
+                      """
+                exit
+                status
+                peers
+                connect <ip_address:port>
+                id
+                msg <params>
+                stats
+                mine
+                add_test_transaction
+                """+bcolors.ENDC)
 
-        elif action == "add_transaction":
-            data = req["transaction"]
-            t = Transaction(
-                b.public_key, data['version'], data['file_hash'], data['filename'])
-            t.sign(b.private_key)
-            b.add_transaction(t)
-            print("Added transaction")
-            return "reload"
+            elif i == 'exit' or i == 'e' or i == 'quit' or i == 'q':
+                exit_function()
 
-        elif action == "mine":
-            b.mine()
-            return "reload"
+            elif i == 'status':
+                print(bcolors.OKBLUE + str(node.sock.status) + bcolors.ENDC)
 
-        elif action == "verify_chain":
-            return str(int(b.verify_chain()))
-        
-        elif action == "set_chain":
-            ip = req["ip"]
-            chain = get_chain(ip)
-            b.chain = chain
+            elif i == 'peers':
+                print(bcolors.OKBLUE + str([str(k)[2:-1]
+                                            for k in node.sock.routing_table]) + bcolors.ENDC)
 
+            elif i.startswith('connect '):
+                try:
+                    ip, port = i.split(" ")[1].split(':')
+                except ValueError:
+                    ip = "localhost"
+                    port = i.split(" ")[1]
+
+                try:
+                    node.sock.connect(str(ip), int(port))
+                except ConnectionRefusedError:
+                    print(bcolors.FAIL + "Couldn't connect to peer" + bcolors.ENDC)
+
+            elif i == 'id':
+                print(bcolors.OKBLUE + str(node.sock.id)[2:-1] + bcolors.ENDC)
+
+            elif i == 'stats':
+                print(bcolors.OKBLUE + "Chain: " + str(node.bc.chain))
+                print("Pending: " + str(node.bc.pending_transactions) + bcolors.ENDC)
+
+            elif i.startswith("msg"):
+                m = i.split(" ")
+                node.sock.send(packets=[str(j) for j in m[1:]], type=str(m))
+
+            elif i == 'mine':
+                node.bc.mine()
+
+            elif i == 'add_test_transaction' or i == 't':
+                transaction = Transaction(
+                    node.bc.public_key, "test", "hash", "test.name")
+                transaction.sign(node.bc.private_key)
+                node.bc.add_transaction(transaction)
+                print(bcolors.OKBLUE + "Transaction added" + bcolors.ENDC)
+
+            elif i == 'last block' or i == 'lb':
+                print(node.bc.last_block.toJSON())
+
+            elif i == '':
+                pass
+
+            else:
+                print(bcolors.FAIL + "Wrong command." + bcolors.ENDC)
+
+    except Exception as e:
+        if type(e) is KeyboardInterrupt:
+            exit_function()
         else:
-            print(action)
-            print(request.json)
-    except Exception as ke:
-        raise ke
-        return str(1)
-
-
-if __name__ == '__main__':
-    """
-    Run node on chosen port
-    """
-    app.run(port=int(port))
+            print(e.with_traceback())
