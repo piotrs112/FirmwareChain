@@ -170,7 +170,7 @@ class Blockchain:
         """
         # Online
         if self.sock is not None:
-            miner = self.proof_of_authority()  # todo check if all choose the same one
+            miner = self.proof_of_authority() 
             print(
                 f"Miner is: {miner[:3]} out of: {[peer[:3] for peer in self.nodes]}")
             my_id = self.sock.id.decode('utf-8')
@@ -190,6 +190,7 @@ class Blockchain:
                 for t in self.pending_transactions:
                     if not verify_signature(t):
                         self.pending_transactions.remove(t)
+                        print("Removed invalid transaction")
                         if self.sock is not None:
                             self.sock.send(t.numerize_public_key(),
                                            type='invalid_transaction')
