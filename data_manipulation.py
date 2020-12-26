@@ -16,21 +16,29 @@ def fromJSON(block_json: str) -> Block:
     block = json.loads(block_json)
     block["datetime"] = datetime.fromtimestamp(block["datetime"])
     block['block_id'] = int(block['block_id'])
-    block['nonce'] = int(block['nonce'])
+
 
     transactions = []
     for t in block["transactions"]:
         transactions.append(transaction_fromJSON(t))
 
     block['transactions'] = transactions
+    if block['pub_key'] == None:
+        pub_key = None
+    else:
+        pub_key = denumerize_public_key(block['pub_key'])
 
     result_block = Block(
         block["block_id"],
         block["transactions"],
         block["datetime"],
-        block["prev_hash"]
+        block["prev_hash"],
+        pub_key 
     )
-    result_block.nonce = block["nonce"]
+    if block['signature'] is not None:
+        result_block.signature = b''.fromhex(block['signature'])
+    else:
+        result_block.signature = None
 
     return result_block
 
