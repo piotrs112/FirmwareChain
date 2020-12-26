@@ -27,6 +27,7 @@ class Transaction:
         self.version = version
         self.file_hash = file_hash
         self.filename = filename
+        self.signature = None
 
     @property
     def representation(self) -> bytes:
@@ -68,10 +69,10 @@ class Transaction:
         Representation for debuggin purposes
         """
         s = ""
-        if self.is_signed:
+        if is_signed(self):
             s += "Signed: "
             s += str(hash(self.signature)) + " "
-        if verify(self):
+        if verify_signature(self):
             s += "Verified"
 
         return s
