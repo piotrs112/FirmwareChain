@@ -33,3 +33,15 @@ def test_mining():
 
     assert bc.verify_chain()
     assert bc.last_block.transactions[0] == t
+
+def test_poa():
+    b1 = Blockchain()
+    b2 = Blockchain()
+    b3 = Blockchain()
+
+    nodes = {'c': 10, 'b': 5, 'd': 15}
+    b1.nodes = nodes
+    b2.nodes = nodes
+    b3.nodes = nodes
+
+    assert b1.proof_of_authority() == b2.proof_of_authority() == b3.proof_of_authority()
