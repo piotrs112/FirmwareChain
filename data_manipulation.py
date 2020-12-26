@@ -1,7 +1,10 @@
 import json
-import requests
 from datetime import datetime
+
+import requests
+
 from block import Block
+from signing import denumerize_public_key
 from transaction import Transaction
 
 
@@ -38,7 +41,7 @@ def transaction_fromJSON(t: str) -> Transaction:
     :param t: Transaction JSON string
     """
     t = json.loads(t)
-    pub_key = Transaction.denumerize_public_key(t['public_key'])
+    pub_key = denumerize_public_key(t['public_key'])
     new_transaction = Transaction(
         pub_key, t['version'], t['file_hash'], t['filename'])
     if t['signature'] is not None:

@@ -5,7 +5,8 @@ from cryptography.hazmat.backends.openssl.rsa import (_RSAPrivateKey,
                                                       _RSAPublicKey)
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
+
+from signing import *
 
 
 class Transaction:
@@ -27,40 +28,6 @@ class Transaction:
         self.file_hash = file_hash
         self.filename = filename
 
-    def sign(self, key: _RSAPrivateKey):
-        """
-        Signs transaction with given key.
-        :param key: Master Private Key
-        """
-
-        self.signature = key.sign(
-            self.representation,
-            padding.PSS(
-                mgf=padding.MGF1(hashes.SHA256()),
-                salt_length=padding.PSS.MAX_LENGTH
-            ),
-            hashes.SHA256()
-        )
-
-    def verify(self) -> bool:
-        """
-        Verifies signed transaction using a public key.
-        """
-
-        try:
-            self.public_key.verify(
-                self.signature,
-                self.representation,
-                padding.PSS(
-                    mgf=padding.MGF1(hashes.SHA256()),
-                    salt_length=padding.PSS.MAX_LENGTH
-                ),
-                hashes.SHA256()
-            )
-        except (InvalidSignature, AttributeError):
-            return False
-        return True
-
     @property
     def representation(self) -> bytes:
         """
@@ -69,44 +36,6 @@ class Transaction:
         key = self.public_key.public_bytes(
             serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
         return b"%s%s%s%s" % (key, self.version.encode(), self.file_hash.encode(), self.filename.encode())
-
-    def numerize_public_key(self) -> str:
-        """
-        Returns public key in a numeric, human readable format
-        """
-        n = self.public_key.public_numbers().n
-        e = self.public_key.public_numbers().e
-        return f"{n}|{e}"
-
-    @classmethod
-    def denumerize_public_key(self, key_numeric: str) -> _RSAPublicKey:
-        """
-        Returns public key from a numeric format
-        """
-        n, e = key_numeric.split('|')
-        return RSAPublicNumbers(int(e), int(n)).public_key()
-
-    def is_author_trusted(self):
-        """
-        Chcecks if author's public key is on the trusted list
-        """
-        credentials = self.numerize_public_key()
-
-        with open("trusted_keys.json", "r") as file:
-            if credentials in file.read().splitlines():
-                return True
-            else:
-                return False
-
-    @property
-    def is_signed(self):
-        """
-        Returns True if transaction is signed
-        """
-        try:
-            return self.signature is not None
-        except:
-            return False
 
     def toJSON(self):
         """
@@ -117,7 +46,7 @@ class Transaction:
         except AttributeError:
             signature = None
         return json.dumps({
-            "public_key": self.numerize_public_key(),
+            "public_key": numerize_public_key(self),
             "version": self.version,
             "file_hash": self.file_hash,
             "filename": self.filename,
@@ -142,7 +71,7 @@ class Transaction:
         if self.is_signed:
             s += "Signed: "
             s += str(hash(self.signature)) + " "
-        if self.verify():
+        if verify(self):
             s += "Verified"
 
         return s

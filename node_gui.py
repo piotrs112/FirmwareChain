@@ -11,6 +11,7 @@ from flask import Flask, render_template, request
 from blockchain import Blockchain
 from data_manipulation import get_chain
 from node import Node
+from signing import sign, is_signed
 from transaction import Transaction
 
 app = Flask(__name__, template_folder="interface", static_folder="interface")
@@ -55,7 +56,7 @@ def index():
             line = []
             for v in t.__dict__.values():
                 if type(v) is _RSAPublicKey:
-                    if t.is_signed:
+                    if is_signed(t):
                         signed = "Signed"
                     else:
                         signed = "Not signed"
@@ -128,7 +129,7 @@ def rest_api():
             data = req["transaction"]
             t = Transaction(
                 b.public_key, data['version'], data['file_hash'], data['filename'])
-            t.sign(b.private_key)
+            sign(t, b.private_key)
             b.add_transaction(t)
             print("Added transaction")
             return "reload"
