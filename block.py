@@ -80,10 +80,10 @@ class Block:
             signature = str(self.signature.hex())
 
         return json.dumps({
-            "block_id": str(self.block_id),
-            "transactions": str(transactions),
+            "block_id": self.block_id,
+            "transactions": transactions,
             "datetime": self.datetime.timestamp(),
-            "prev_hash": str(self.prev_hash),
+            "prev_hash": self.prev_hash,
             "pub_key": pub_key,
             "signature": signature
         })
@@ -121,3 +121,6 @@ class Block:
             return False
 
         return True
+
+    def __repr__(self):
+        return str(self)
