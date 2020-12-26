@@ -4,8 +4,9 @@ import sys
 import py2p
 
 from blockchain import Blockchain
+from data_manipulation import fromJSON, transaction_fromJSON
+from signing import sign
 from transaction import Transaction
-from data_manipulation import transaction_fromJSON, fromJSON
 
 
 def exit_function(node):
@@ -28,7 +29,7 @@ class Node:
         """
         self.sock = py2p.MeshSocket(
             '0.0.0.0', port, py2p.Protocol('mesh', 'SSL'))
-        
+
         self.bc = Blockchain(self.sock)
         self.sock.register_handler(self.handle_incoming)
 
@@ -82,7 +83,7 @@ class Node:
                 self.longest_chain_owner == msg.sender
 
                 print(f"{self.longest_chain} {self.longest_chain_owner}")
-        
+
         # Start mining
         elif msg.packets[0] == 'mine':
             self.bc.mine()
@@ -95,7 +96,6 @@ class Node:
         """
         print(
             f"New connection, total: {len(str([str(k)[2:-1] for k in self.sock.routing_table]))}")
-        
 
     def once_connect(self, sock: py2p.MeshSocket):
         """
@@ -197,7 +197,7 @@ def main():
             elif i == 'add_test_transaction' or i == 't':
                 transaction = Transaction(
                     node.bc.public_key, "test", "hash", "test.name")
-                transaction.sign(node.bc.private_key)
+                sign(transaction, node.bc.private_key)
                 node.bc.add_transaction(transaction)
                 print(bcolors.OKBLUE + "Transaction added" + bcolors.ENDC)
 
@@ -217,6 +217,7 @@ def main():
             exit_function(node)
         else:
             print(e)
+
 
 if __name__ == "__main__":
     main()
