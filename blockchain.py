@@ -133,19 +133,22 @@ class Blockchain:
         Chooses miner based on their authority
         """
         # Update peer list
-        for peer in self.sock.routing_table:
-            if peer.decode('utf-8') not in self.nodes:
-                self.nodes[peer.decode('utf-8')] = 10
+        if self.sock is not None:
+            for peer in self.sock.routing_table:
+                if peer.decode('utf-8') not in self.nodes:
+                    self.nodes[peer.decode('utf-8')] = 10
+
+        # Sort potential leaders for bad ones
+        nodes = list(self.nodes.keys())
+        nodes = [n for n in nodes if self.nodes[n] >= 10]
 
         # Choose leader at 10-seconds intervals
         time = datetime.now() - self.chain[0].datetime
         last_second = int(str(time.seconds)[-1])
         time = int(time.total_seconds()) - last_second
-        leader_n = time % len(self.nodes.keys())
-        nodes = list(self.nodes.keys())
+        leader_n = time % len(nodes)
         nodes.sort()
-        # Sort potential leaders for bad ones
-        nodes = [n for n in nodes if self.nodes[n] >= 10]
+
         leader = nodes[leader_n]
 
         # if self.sock is not None:
