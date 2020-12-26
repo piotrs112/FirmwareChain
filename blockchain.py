@@ -12,6 +12,7 @@ import py2p
 from merklelib import MerkleTree
 
 from block import Block
+from signing import verify_signature, sign
 from transaction import Transaction
 
 
@@ -19,7 +20,6 @@ class Blockchain:
     """
     Stores and manages blocks and transactions
     """
-    DIFFICULTY = 2  # Number of leading zeros required in hash
 
     def __init__(self, sock: py2p.MeshSocket = None):
         """
@@ -28,10 +28,14 @@ class Blockchain:
 
         self.chain = []
         self.pending_transactions = []
-        genesis_block = Block(0, [], datetime(2000, 1, 1, 0, 0), "0")
-        genesis_block, new_hash = self.proof_of_work(genesis_block)
+        genesis_block = Block(0, [], datetime(2000, 1, 1, 0, 0), "0", None)
         self.chain.append(genesis_block)
         self.sock = sock
+
+        if self.sock is not None:
+            self.nodes = {self.sock.id.decode('utf-8'): 10}
+        else:
+            self.nodes = None
 
         # generate private key and public key if not found
         if not ("private_key.pem" in os.listdir() and "public_key.pem" in os.listdir()):
@@ -102,7 +106,7 @@ class Blockchain:
         Adds transaction to pending transactions.
         :param transaction: Transaction object
         """
-        if transaction.verify():
+        if verify_signature(transaction):
             self.pending_transactions.append(transaction)
             if self.sock is not None:
                 self.sock.send(transaction.toJSON(), type='new_transaction')
@@ -112,7 +116,7 @@ class Blockchain:
 
     def add_transaction_from_dict(self, d: Dict[str, str]) -> bool:
         """
-        Created transaction from dict and adds it to pending transactions.
+        Creates transaction from dict and adds it to pending transactions.
         :param d: Dictionary with keys: version, filename, file_hash
         """
         transaction = Transaction(
@@ -124,24 +128,30 @@ class Blockchain:
 
         return self.add_transaction(transaction)
 
-    # todo change algorithm
-    def proof_of_work(self, block) -> Tuple[Block, str]:
-        """
-        Computes hash until it has a proper number of leading zeros by increasing nonce.
-        :param block: Block object whose hash will be computed
-        """
-        computed = block.compute_hash()
-        while not computed.startswith('0' * self.DIFFICULTY):
-            block.nonce = block.nonce + 1
-            computed = block.compute_hash()
-        return block, computed
-
     def proof_of_authority(self):
         """
         Chooses miner based on their authority
         """
-        # todo
-        pass
+        # Update peer list
+        for peer in self.sock.routing_table:
+            if peer.decode('utf-8') not in self.nodes:
+                self.nodes[peer.decode('utf-8')] = 10
+
+        # Choose leader at 10-seconds intervals
+        time = datetime.now() - self.chain[0].datetime
+        last_second = int(str(time.seconds)[-1])
+        time = int(time.total_seconds()) - last_second
+        leader_n = time % len(self.nodes.keys())
+        nodes = list(self.nodes.keys())
+        nodes.sort()
+        # Sort potential leaders for bad ones
+        nodes = [n for n in nodes if self.nodes[n] >= 10]
+        leader = nodes[leader_n]
+
+        # if self.sock is not None:
+        #     self.sock.send(b'whisper', ('miner', miner))
+
+        return leader
 
     @property
     def last_block(self) -> Block:
@@ -153,23 +163,45 @@ class Blockchain:
 
     def mine(self):
         """
-        Mines a new block with a Proof of Work and adds it to the chain.
+        Mines a new block with a Proof of Authority and adds it to the chain.
         """
+        # Online
+        if self.sock is not None:
+            miner = self.proof_of_authority()  # todo check if all choose the same one
+            print(
+                f"Miner is: {miner[:3]} out of: {[peer[:3] for peer in self.nodes]}")
+            my_id = self.sock.id.decode('utf-8')
+        # Offline
+        else:
+            my_id = None
+            miner = None
 
-        if len(self.pending_transactions) > 0:
-            new_id = self.last_block.block_id + 1
-            prev_hash = self.last_block.compute_hash()
-            time = datetime.now()
+        if my_id == miner:
+            if len(self.pending_transactions) > 0:
+                # Setup block generation
+                new_id = self.last_block.block_id + 1
+                prev_hash = self.last_block.compute_hash()
+                time = datetime.now()
 
-            block = Block(new_id, self.pending_transactions,
-                          time, prev_hash)
-            block, new_hash = self.proof_of_work(block)
-            # Send out block
-            if self.sock is not None:
-                self.sock.send(block.toJSON(), type='mined')
-            self.chain.append(block)
-            self.pending_transactions = []
-            print("Mined")
+                # Verify transactions:
+                for t in self.pending_transactions:
+                    if not verify_signature(t):
+                        self.pending_transactions.remove(t)
+                        if self.sock is not None:
+                            self.sock.send(t.numerize_public_key(),
+                                           type='invalid_transaction')
+
+                # New block
+                block = Block(new_id, self.pending_transactions,
+                              time, prev_hash, self.public_key)
+                sign(block, self.private_key)
+
+                # Send out block
+                if self.sock is not None:
+                    self.sock.send(block.toJSON(), type='mined')
+                self.chain.append(block)
+                self.pending_transactions = []
+                print("Mined")
 
     def verify_chain(self) -> bool:
         """
@@ -177,8 +209,6 @@ class Blockchain:
         """
         for i in range(1, len(self.chain)):
             if self.chain[i].prev_hash != self.chain[i-1].compute_hash():
-                return False
-            elif not self.chain[i].compute_hash().startswith('0'*self.DIFFICULTY):
                 return False
             elif not self.chain[i].verify_block():
                 return False

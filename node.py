@@ -8,7 +8,7 @@ from transaction import Transaction
 from data_manipulation import transaction_fromJSON, fromJSON
 
 
-def exit_function():
+def exit_function(node):
     """
     Close connection safely and exit
     """
@@ -28,6 +28,7 @@ class Node:
         """
         self.sock = py2p.MeshSocket(
             '0.0.0.0', port, py2p.Protocol('mesh', 'SSL'))
+        
         self.bc = Blockchain(self.sock)
         self.sock.register_handler(self.handle_incoming)
 
@@ -61,10 +62,10 @@ class Node:
         elif msg.packets[0] == 'mined':
             new_block = fromJSON(msg.packets[1])
             if new_block.verify_block():
-                node.bc.chain.append(new_block)
-                for t in node.bc.pending_transactions:
+                self.bc.chain.append(new_block)
+                for t in self.bc.pending_transactions:
                     if t in new_block.transactions:
-                        node.bc.pending_transactions.remove(t)
+                        self.bc.pending_transactions.remove(t)
             else:
                 print(bcolors.FAIL + "Invalid block!" + bcolors.ENDC)
 
@@ -81,6 +82,11 @@ class Node:
                 self.longest_chain_owner == msg.sender
 
                 print(f"{self.longest_chain} {self.longest_chain_owner}")
+        
+        # Start mining
+        elif msg.packets[0] == 'mine':
+            self.bc.mine()
+            print(f"Got mine order! {self.sock.id}")
 
     def on_connect(self, sock: py2p.MeshSocket):
         """
@@ -88,7 +94,8 @@ class Node:
         :param sock: Mesh socket object
         """
         print(
-            f"New connection, total: {len(self.sock.routing_table)}")  # todo fix len()
+            f"New connection, total: {len(str([str(k)[2:-1] for k in self.sock.routing_table]))}")
+        
 
     def once_connect(self, sock: py2p.MeshSocket):
         """
@@ -112,7 +119,7 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
-if __name__ == "__main__":
+def main():
     """
     Main function run at script execution
     """
@@ -152,7 +159,7 @@ if __name__ == "__main__":
                 """+bcolors.ENDC)
 
             elif i == 'exit' or i == 'e' or i == 'quit' or i == 'q':
-                exit_function()
+                exit_function(node)
 
             elif i == 'status':
                 print(bcolors.OKBLUE + str(node.sock.status) + bcolors.ENDC)
@@ -199,12 +206,17 @@ if __name__ == "__main__":
 
             elif i == '':
                 pass
+            elif i == 'u':
+                print(node.bc.nodes)
 
             else:
                 print(bcolors.FAIL + "Wrong command." + bcolors.ENDC)
 
     except Exception as e:
         if type(e) is KeyboardInterrupt:
-            exit_function()
+            exit_function(node)
         else:
-            print(e.with_traceback())
+            print(e)
+
+if __name__ == "__main__":
+    main()
