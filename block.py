@@ -42,8 +42,6 @@ class Block:
         """
 
         block = json.dumps(self.toJSON(), sort_keys=True)
-        print(block)
-        print(type(block))
         sha = hashlib.sha256(block.encode()).hexdigest()
         return sha
 
@@ -61,7 +59,20 @@ class Block:
         return True
 
     def __str__(self):
-        return f"Block ID: {self.block_id}\nTransactions: {len(self.transactions)}\nHash: {self.compute_hash()}\nLast hash: {self.prev_hash}\n"
+        pk = getattr(self, 'public_key', None)
+        if pk is not None:
+            pk = pk.public_numbers()
+            pk = f"{pk.e} {pk.n}"
+
+        return f"""
+        Block ID: {self.block_id}\n
+        Transactions: {len(self.transactions)}\n
+        Hash: {self.compute_hash()}\n
+        Last hash: {self.prev_hash}\n
+        Datetime: {self.datetime}\n
+        Pub key: {pk}\n
+        Signature: {self.signature}
+        """
 
     def toJSON(self):
         """
@@ -117,10 +128,18 @@ class Block:
             return False
         if self.prev_hash != other.prev_hash:
             return False
-        if self.public_key != other.public_key:
-            return False
-
+        try:
+            if self.public_key.public_numbers() != other.public_key.public_numbers():
+                return False
+        except AttributeError:
+            if self.block_id == 0 and other.block_id == 0:
+                pass
+            else:
+                return False
         return True
+
+    def __ne__(self, other):
+        return self.__eq__(other)
 
     def __repr__(self):
         return str(self)
