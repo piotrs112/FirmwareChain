@@ -1,4 +1,5 @@
 from datetime import datetime
+from time import sleep
 
 from block import Block
 from blockchain import Blockchain
@@ -10,7 +11,7 @@ def test_init():
     bc = Blockchain()
     assert len(bc.chain) == 1
     assert bc.pending_transactions == []
-    assert Block(0, [], datetime(2000, 1, 1, 0, 0), "0", None) in bc.chain
+    assert Block(0, [], datetime(2000, 1, 1, 0, 0), "0", None) == bc.last_block
     assert bc.sock == None
 
 
@@ -44,4 +45,9 @@ def test_poa():
     b2.nodes = nodes
     b3.nodes = nodes
 
-    assert b1.proof_of_authority() == b2.proof_of_authority() == b3.proof_of_authority()
+    assert b1.proof_of_authority() == b2.proof_of_authority() == b3.proof_of_authority(), "Different chosen leaders"
+
+    leader1 = b1.proof_of_authority()
+    sleep(10)
+    leader2 = b1.proof_of_authority()
+    assert leader1 is not leader2

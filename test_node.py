@@ -1,4 +1,4 @@
-from random import randint
+from random import randint, choice
 from time import sleep
 
 import pytest
@@ -46,24 +46,33 @@ def test_transaction_propagation():
     assert node.bc.pending_transactions[0] == t
 
 def test_mining():
-    port = randint(6002, 6100)
-    port2 = port + 1
+    n_nodes = 4
+    nodes = {}
+    
+    for port in range(n:=randint(6000,7000), n + n_nodes):
+        nodes[port] = Node(port=port)
 
-    server = Node(port)
-    node = Node(port2)
-    offline = Blockchain()
+    for port, node in nodes.items():
+        try:
+            node.sock.connect("0.0.0.0", port=port+1)
+        except Exception as e:
+            print("Didnt connect", e)
+            pass
 
-    node.sock.connect("0.0.0.0", port=port)
-    sleep(0.1)
+    sleep(1)
 
-    t = Transaction(server.bc.public_key, "v1", "hash@#$", "main.h")
-    sign(t, server.bc.private_key)
-    server.bc.add_transaction(t)
+    vals = list(nodes.values())
+    for i in range(3):
+        for j in range(3):
+            server = choice(vals)
+            t = Transaction(server.bc.public_key, f"v{i}", f"hash{j}", "main.h")
+            sign(t, server.bc.private_key)
+            server.bc.add_transaction(t)
+            sleep(0.1)
+        server.sock.send(type=b'mine')
+        sleep(0.1)
 
-    sleep(0.1)
-
-    server.sock.send(type="mine")
-    offline.add_transaction(t)
-    offline.mine()
-    #todo 
-   
+    node0 = vals[0]
+        
+    for node in vals[1:]:
+        assert node.bc.chain == node0.bc.chain
