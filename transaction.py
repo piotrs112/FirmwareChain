@@ -71,7 +71,7 @@ class Transaction:
         s = ""
         if is_signed(self):
             s += "Signed: "
-            s += str(self.signature) + " "
+            s += str(self.signature)[:5] + " "
         if verify_signature(self):
             s += "Verified"
 
