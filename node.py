@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+import random
 import sys
+from py2p.base import EventEmitter as ee
 
 import py2p
 
@@ -29,6 +31,8 @@ class Node:
         """
         self.sock = py2p.MeshSocket(
             '0.0.0.0', port, py2p.Protocol('mesh', 'SSL'))
+        
+        self.connection = py2p.mesh.MeshConnection(sock=self.sock, server=self.sock)
 
         self.bc = Blockchain(self.sock)
         self.sock.register_handler(self.handle_incoming)
@@ -40,17 +44,20 @@ class Node:
         self.longest_chain = 1
         self.longest_chain_owner = None
 
-    def handle_incoming(self, msg: py2p.base.Message, handler):
+    def handle_incoming(self, msg: py2p.base.Message, connection) -> bool:
         """
         Handles incoming messages
         :param msg: Incoming message
         :param handler: Handler function
         """
 
-        print(msg.packets)  # todo del after dev
+        if self.connection.handle_waterfall(msg, msg.packets):
+            print("Duplicate!")
+            return
+        #print(f"MSG: {msg.packets[0]}")  # todo del after dev
 
         # Add new transaction
-        if msg.packets[0] == 'new_transaction':
+        if msg.packets[0] == b'new_transaction':
             for t in msg.packets[1:]:
                 try:
                     transaction = transaction_fromJSON(t)
@@ -60,23 +67,28 @@ class Node:
                     print(e.with_traceback())
 
         # Mined new block
-        elif msg.packets[0] == 'mined':
+        elif msg.packets[0] == b'new_block':
             new_block = fromJSON(msg.packets[1])
-            if new_block.verify_block():
-                self.bc.chain.append(new_block)
-                for t in self.bc.pending_transactions:
-                    if t in new_block.transactions:
-                        self.bc.pending_transactions.remove(t)
-            else:
-                print(bcolors.FAIL + "Invalid block!" + bcolors.ENDC)
+            if new_block not in self.bc.chain:
+                if new_block.verify_block():
+                    self.bc.chain.append(new_block)
+                    if not self.bc.verify_chain():
+                        self.bc.chain.remove(new_block)
+                    else:
+                        # for t in self.bc.pending_transactions:
+                        #     if t in self.bc.last_block.transactions:
+                        #         self.bc.pending_transactions.remove(t)
+                        self.bc.pending_transactions = []
+                else:
+                    print(bcolors.FAIL + "Invalid block!" + bcolors.ENDC)
 
         # Someone asking for chain length
-        elif msg.packets[0] == 'get_chain_length':
+        elif msg.packets[0] == b'get_chain_length':
             msg.reply(type=b'whisper', packets=len(
                 self.bc.chain), sender=msg.sender)
 
         # Someone sending chain length
-        elif msg.packets[0] == 'set_chain_length':
+        elif msg.packets[0] == b'set_chain_length':
             # todo podmiana od razu czy po czasie?
             if msg.packets[1] > self.longest_chain:
                 self.longest_chain = msg.packets[1]
@@ -85,9 +97,11 @@ class Node:
                 print(f"{self.longest_chain} {self.longest_chain_owner}")
 
         # Start mining
-        elif msg.packets[0] == 'mine':
+        elif msg.packets[0] == b'mine':
             self.bc.mine()
-            print(f"Got mine order! {self.sock.id}")
+            #print(f"Got mine order!")
+            
+        return True
 
     def on_connect(self, sock: py2p.MeshSocket):
         """
@@ -102,8 +116,7 @@ class Node:
         What to do on the first connections
         :param sock: Mesh socket object
         """
-        self.sock.send(type='get_chain_length')
-
+        self.sock.send(type=b'get_chain_length')
 
 class bcolors:
     """
@@ -189,14 +202,15 @@ def main():
 
             elif i.startswith("msg"):
                 m = i.split(" ")
-                node.sock.send(packets=[str(j) for j in m[1:]], type=str(m))
+                node.sock.send(packets=[str(j) for j in m[1:]], type=b'%s'.format(str(m)))
 
             elif i == 'mine':
                 node.bc.mine()
 
             elif i == 'add_test_transaction' or i == 't':
+                num = random.randint(1, 100)
                 transaction = Transaction(
-                    node.bc.public_key, "test", "hash", "test.name")
+                    node.bc.public_key, "test", f"hash{num}", "test.name")
                 sign(transaction, node.bc.private_key)
                 node.bc.add_transaction(transaction)
                 print(bcolors.OKBLUE + "Transaction added" + bcolors.ENDC)
@@ -208,6 +222,12 @@ def main():
                 pass
             elif i == 'u':
                 print(node.bc.nodes)
+            elif i.startswith('> '):
+                command = i.lstrip("> ")
+                try:
+                    exec(command)
+                except Exception as e:
+                    print(e)
 
             else:
                 print(bcolors.FAIL + "Wrong command." + bcolors.ENDC)

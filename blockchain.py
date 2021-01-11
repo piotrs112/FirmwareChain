@@ -109,7 +109,7 @@ class Blockchain:
         if verify_signature(transaction):
             self.pending_transactions.append(transaction)
             if self.sock is not None:
-                self.sock.send(transaction.toJSON(), type='new_transaction')
+                self.sock.send(transaction.toJSON(), type=b'new_transaction')
             return True
         else:
             return False
@@ -146,7 +146,7 @@ class Blockchain:
         time = datetime.now() - self.chain[0].datetime
         last_second = int(str(time.seconds)[-1])
         time = int(time.total_seconds()) - last_second
-        leader_n = time % len(nodes)
+        leader_n = int(time/10 % len(nodes))
         nodes.sort()
 
         leader = nodes[leader_n]
@@ -170,9 +170,10 @@ class Blockchain:
         """
         # Online
         if self.sock is not None:
-            miner = self.proof_of_authority() 
-            print(
-                f"Miner is: {miner[:3]} out of: {[peer[:3] for peer in self.nodes]}")
+            self.sock.send(type=b'mine') # Send out mine order
+            miner = self.proof_of_authority()
+            # print(
+            #     f"Miner is: {miner[:3]} out of: {[peer[:3] for peer in self.nodes]}")
             my_id = self.sock.id.decode('utf-8')
         # Offline
         else:
@@ -180,7 +181,12 @@ class Blockchain:
             miner = None
 
         if my_id == miner:
-            if len(self.pending_transactions) > 0:
+            delta = datetime.now() - self.last_block.datetime
+            if delta.total_seconds() < 3 and self.last_block.public_key == self.public_key:
+                # Too fast!
+                return
+            
+            elif len(self.pending_transactions) > 0:
                 # Setup block generation
                 new_id = self.last_block.block_id + 1
                 prev_hash = self.last_block.compute_hash()
@@ -193,8 +199,9 @@ class Blockchain:
                         print("Removed invalid transaction")
                         if self.sock is not None:
                             self.sock.send(t.numerize_public_key(),
-                                           type='invalid_transaction')
-
+                                           type=b'invalid_transaction')
+                
+                print(f"Pending transactions: {len(self.pending_transactions)}")
                 # New block
                 block = Block(new_id, self.pending_transactions,
                               time, prev_hash, self.public_key)
@@ -202,7 +209,7 @@ class Blockchain:
 
                 # Send out block
                 if self.sock is not None:
-                    self.sock.send(block.toJSON(), type='mined')
+                    self.sock.send(block.toJSON(), type=b'new_block')
                 self.chain.append(block)
                 self.pending_transactions = []
                 print("Mined")
@@ -215,6 +222,8 @@ class Blockchain:
             if self.chain[i].prev_hash != self.chain[i-1].compute_hash():
                 return False
             elif not self.chain[i].verify_block():
+                return False
+            elif self.chain[i].block_id != self.chain[i-1].block_id + 1:
                 return False
         return True
 
