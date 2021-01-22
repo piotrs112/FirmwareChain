@@ -82,8 +82,8 @@ class Blockchain:
                 backend=default_backend()
             )
 
-    @classmethod
-    def generate_private_key(cls) -> _RSAPrivateKey:
+    @staticmethod
+    def generate_private_key() -> _RSAPrivateKey:
         """
         Generates private key
         """
@@ -93,8 +93,8 @@ class Blockchain:
             backend=default_backend()
         )
 
-    @classmethod
-    def generate_public_key(cls, private_key: _RSAPrivateKey):
+    @staticmethod
+    def generate_public_key(private_key: _RSAPrivateKey):
         """
         Generates public key
         :param private_key: Private key to generate public key from
