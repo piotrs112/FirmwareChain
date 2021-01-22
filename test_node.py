@@ -69,7 +69,7 @@ def test_mining():
             sign(t, server.bc.private_key)
             server.bc.add_transaction(t)
             sleep(0.1)
-        server.sock.send(type=b'mine')
+        server.sock.send('mine')
         sleep(0.1)
 
     node0 = vals[0]

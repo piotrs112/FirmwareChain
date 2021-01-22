@@ -109,7 +109,7 @@ class Blockchain:
         if verify_signature(transaction):
             self.pending_transactions.append(transaction)
             if self.sock is not None:
-                self.sock.send(transaction.toJSON(), type=b'new_transaction')
+                self.sock.send('new_transaction', transaction.toJSON())
             return True
         else:
             return False
@@ -170,7 +170,7 @@ class Blockchain:
         """
         # Online
         if self.sock is not None:
-            self.sock.send(type=b'mine') # Send out mine order
+            self.sock.send('mine') # Send out mine order
             miner = self.proof_of_authority()
             # print(
             #     f"Miner is: {miner[:3]} out of: {[peer[:3] for peer in self.nodes]}")
@@ -198,8 +198,8 @@ class Blockchain:
                         self.pending_transactions.remove(t)
                         print("Removed invalid transaction")
                         if self.sock is not None:
-                            self.sock.send(t.numerize_public_key(),
-                                           type=b'invalid_transaction')
+                            self.sock.send(f'invalid_transaction',
+                                            t.numerize_public_key())
                 
                 print(f"Pending transactions: {len(self.pending_transactions)}")
                 # New block
@@ -209,7 +209,7 @@ class Blockchain:
 
                 # Send out block
                 if self.sock is not None:
-                    self.sock.send(block.toJSON(), type=b'new_block')
+                    self.sock.send('new_block', block.toJSON())
                 self.chain.append(block)
                 self.pending_transactions = []
                 print("Mined")

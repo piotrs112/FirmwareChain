@@ -31,44 +31,41 @@ class Node:
         """
         self.sock = py2p.MeshSocket(
             '0.0.0.0', port, py2p.Protocol('mesh', 'SSL'))
-        
-        self.connection = py2p.mesh.MeshConnection(sock=self.sock, server=self.sock)
+
+        self.connection = py2p.mesh.MeshConnection(
+            sock=self.sock, server=self.sock)
 
         self.bc = Blockchain(self.sock)
-        self.sock.register_handler(self.handle_incoming)
 
         # Attach listener to connection event
         self.sock.on('connect', self.on_connect)
         self.sock.once('connect', self.once_connect)
+        self.sock.on('message', self.handle_incoming)
 
         self.longest_chain = 1
         self.longest_chain_owner = None
 
-    def handle_incoming(self, msg: py2p.base.Message, connection) -> bool:
+    def handle_incoming(self, connection) -> bool:
         """
         Handles incoming messages
-        :param msg: Incoming message
-        :param handler: Handler function
+        :param connection: Connection object
         """
-
-        if self.connection.handle_waterfall(msg, msg.packets):
-            print("Duplicate!")
-            return
-        #print(f"MSG: {msg.packets[0]}")  # todo del after dev
-
+        msg = connection.recv()
+        packets = msg.packets[1:]
         # Add new transaction
-        if msg.packets[0] == b'new_transaction':
-            for t in msg.packets[1:]:
-                try:
-                    transaction = transaction_fromJSON(t)
-                    if transaction not in self.bc.pending_transactions:
-                        self.bc.add_transaction(transaction)
-                except Exception as e:
-                    print(e.with_traceback())
+        if packets[0] == 'new_transaction':
+            print("newtransaction received")
+            t = packets[1]
+            try:
+                transaction = transaction_fromJSON(t)
+                if transaction not in self.bc.pending_transactions:
+                    self.bc.add_transaction(transaction)
+            except Exception as e:
+                print(e.with_traceback())
 
         # Mined new block
-        elif msg.packets[0] == b'new_block':
-            new_block = fromJSON(msg.packets[1])
+        elif packets[0] == 'new_block':
+            new_block = fromJSON(packets[1])
             if new_block not in self.bc.chain:
                 if new_block.verify_block():
                     self.bc.chain.append(new_block)
@@ -83,24 +80,24 @@ class Node:
                     print(bcolors.FAIL + "Invalid block!" + bcolors.ENDC)
 
         # Someone asking for chain length
-        elif msg.packets[0] == b'get_chain_length':
+        elif packets[0] == 'get_chain_length':
             msg.reply(type=b'whisper', packets=len(
                 self.bc.chain), sender=msg.sender)
 
         # Someone sending chain length
-        elif msg.packets[0] == b'set_chain_length':
+        elif packets[0] == 'set_chain_length':
             # todo podmiana od razu czy po czasie?
-            if msg.packets[1] > self.longest_chain:
-                self.longest_chain = msg.packets[1]
+            if packets[1] > self.longest_chain:
+                self.longest_chain = packets[1]
                 self.longest_chain_owner == msg.sender
 
                 print(f"{self.longest_chain} {self.longest_chain_owner}")
 
         # Start mining
-        elif msg.packets[0] == b'mine':
+        elif packets[0] == 'mine':
             self.bc.mine()
             #print(f"Got mine order!")
-            
+
         return True
 
     def on_connect(self, sock: py2p.MeshSocket):
@@ -116,7 +113,10 @@ class Node:
         What to do on the first connections
         :param sock: Mesh socket object
         """
-        self.sock.send(type=b'get_chain_length')
+        self.sock.send('passport', self.sock.id, self.bc.public_key)
+        # todo sign this data?
+        # todo receivong it and stuff
+
 
 class bcolors:
     """
@@ -202,7 +202,7 @@ def main():
 
             elif i.startswith("msg"):
                 m = i.split(" ")
-                node.sock.send(packets=[str(j) for j in m[1:]], type=b'%s'.format(str(m)))
+                node.sock.send([str(j) for j in m[1:]])
 
             elif i == 'mine':
                 node.bc.mine()
@@ -222,6 +222,8 @@ def main():
                 pass
             elif i == 'u':
                 print(node.bc.nodes)
+            elif i == 'mm':
+                node.sock.send('mm', 'Hi!')
             elif i.startswith('> '):
                 command = i.lstrip("> ")
                 try:
