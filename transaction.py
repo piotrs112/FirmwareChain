@@ -6,7 +6,7 @@ from cryptography.hazmat.backends.openssl.rsa import (_RSAPrivateKey,
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 
-from signing import *
+from signing import is_signed, numerize_public_key, verify_signature
 
 
 class Transaction:
@@ -54,7 +54,7 @@ class Transaction:
             "signature": signature
         })
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """
         Compare transactions
         :param other: Transaction object to compare to
@@ -63,8 +63,9 @@ class Transaction:
             return True
         else:
             return False
+            # todo porownac podpis i 
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         Representation for debuggin purposes
         """
