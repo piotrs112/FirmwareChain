@@ -1,10 +1,7 @@
 import json
 
-from cryptography.exceptions import InvalidSignature
-from cryptography.hazmat.backends.openssl.rsa import (_RSAPrivateKey,
-                                                      _RSAPublicKey)
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.backends.openssl.rsa import _RSAPublicKey
+from cryptography.hazmat.primitives import serialization
 
 from signing import is_signed, numerize_public_key, verify_signature
 

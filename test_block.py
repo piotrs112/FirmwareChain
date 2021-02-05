@@ -1,5 +1,3 @@
-import pytest
-
 from blockchain import Blockchain
 from block import Block
 from signing import sign, verify_signature, is_signed
