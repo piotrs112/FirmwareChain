@@ -1,10 +1,6 @@
-from random import randint, choice
+from random import choice, randint
 from time import sleep
 
-import pytest
-from py2p.base import Message
-
-from blockchain import Blockchain
 from node import Node
 from signing import sign
 from transaction import Transaction
@@ -42,7 +38,7 @@ def test_transaction_propagation():
     sign(t, server.bc.private_key)
     server.bc.add_transaction(t)
 
-    sleep(0.1)
+    sleep(0.5)
     assert node.bc.pending_transactions[0] == t
 
 def test_mining():
@@ -63,6 +59,7 @@ def test_mining():
 
     vals = list(nodes.values())
     for i in range(3):
+        server = None
         for j in range(3):
             server = choice(vals)
             t = Transaction(server.bc.public_key, f"v{i}", f"hash{j}", "main.h")
