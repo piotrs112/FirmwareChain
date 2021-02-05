@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import random
 import sys
-from py2p.base import EventEmitter as ee
+from time import sleep
 
 import py2p
 
 from blockchain import Blockchain
 from data_manipulation import fromJSON, transaction_fromJSON
-from signing import sign
+from signing import directly_numerize_public_key, numerize_public_key, sign, verify_signature
 from transaction import Transaction
 
 
@@ -38,8 +38,8 @@ class Node:
         self.bc = Blockchain(self.sock)
 
         # Attach listener to connection event
-        self.sock.on('connect', self.on_connect)
-        self.sock.once('connect', self.once_connect)
+        #self.sock.on('connect', self.on_connect)
+        #self.sock.once('connect', self.once_connect)
         self.sock.on('message', self.handle_incoming)
 
         self.longest_chain = 1
@@ -51,6 +51,7 @@ class Node:
         :param connection: Connection object
         """
         msg = connection.recv()
+        print(msg.packets)
         packets = msg.packets[1:]
         # Add new transaction
         if packets[0] == 'new_transaction':
@@ -59,7 +60,11 @@ class Node:
             try:
                 transaction = transaction_fromJSON(t)
                 if transaction not in self.bc.pending_transactions:
-                    self.bc.add_transaction(transaction)
+                    if verify_signature(transaction):
+                        self.bc.add_transaction(transaction)
+                    else:
+                        # Punish for invalid transaction
+                        self.bc.id_bank.modify(transaction.public_key, -2)
             except Exception as e:
                 print(e.with_traceback())
 
@@ -71,13 +76,20 @@ class Node:
                     self.bc.chain.append(new_block)
                     if not self.bc.verify_chain():
                         self.bc.chain.remove(new_block)
+                        # Punish for invalid block
+                        self.bc.id_bank.modify(new_block.public_key, -5)
+
                     else:
                         # for t in self.bc.pending_transactions:
                         #     if t in self.bc.last_block.transactions:
                         #         self.bc.pending_transactions.remove(t)
                         self.bc.pending_transactions = []
+                        # Reward for valid block
+                        self.bc.id_bank.modify(new_block.public_key, 1)
                 else:
                     print(bcolors.FAIL + "Invalid block!" + bcolors.ENDC)
+                    # Punish for invalid block
+                    self.bc.id_bank.modify(new_block.public_key, -5)
 
         # Someone asking for chain length
         elif packets[0] == 'get_chain_length':
@@ -89,7 +101,7 @@ class Node:
             # todo podmiana od razu czy po czasie?
             if packets[1] > self.longest_chain:
                 self.longest_chain = packets[1]
-                self.longest_chain_owner == msg.sender
+                self.longest_chain_owner = msg.sender
 
                 print(f"{self.longest_chain} {self.longest_chain_owner}")
 
@@ -97,6 +109,17 @@ class Node:
         elif packets[0] == 'mine':
             self.bc.mine()
             #print(f"Got mine order!")
+
+        # Update new node in id bank
+        elif packets[0] == 'passport':
+            print("PASSPORT")
+            self.bc.id_bank.update({
+                packets[1]: {
+                    "mesh_id": str(packets[2]),
+                    "score": 10
+                }
+            })
+            self.passport()
 
         return True
 
@@ -107,15 +130,21 @@ class Node:
         """
         print(
             f"New connection, total: {len(str([str(k)[2:-1] for k in self.sock.routing_table]))}")
+        sleep(1)
+        print("on _con")
+        sock.send('passport', directly_numerize_public_key(self.bc.public_key), str(self.sock.id))
+        # todo sign this data?
+        # todo get it working
 
     def once_connect(self, sock: py2p.MeshSocket):
         """
         What to do on the first connections
         :param sock: Mesh socket object
         """
-        self.sock.send('passport', self.sock.id, self.bc.public_key)
-        # todo sign this data?
-        # todo receivong it and stuff
+        print("once")
+
+    def passport(self):
+        self.sock.send('passport', numerize_public_key(self.bc), self.sock.id)
 
 
 class bcolors:
@@ -152,6 +181,8 @@ def main():
             node.sock.connect('0.0.0.0', 6000)
         except ConnectionRefusedError:
             print(bcolors.FAIL+"Couldn't connect to peer"+bcolors.ENDC)
+    
+    node.passport()
 
     # Console handler
     try:
@@ -230,7 +261,10 @@ def main():
                     exec(command)
                 except Exception as e:
                     print(e)
-
+            elif i == "bank":
+                print(node.bc.id_bank.bank)
+            elif i == "passport":
+                node.passport()
             else:
                 print(bcolors.FAIL + "Wrong command." + bcolors.ENDC)
 

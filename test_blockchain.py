@@ -40,7 +40,24 @@ def test_poa():
     b2 = Blockchain()
     b3 = Blockchain()
 
-    nodes = {'c': 10, 'b': 5, 'd': 15}
+    nodes = [
+        {
+            "pubkey": "pub3",
+            "mesh_id": "id_3",
+            "score": 5
+        },
+        {
+            "pubkey": "pub2",
+            "mesh_id": "id_2",
+            "score": 15
+        },
+        {
+            "pubkey": "pub1",
+            "mesh_id": "id_1",
+            "score": 10
+        },
+    ]
+
     b1.nodes = nodes
     b2.nodes = nodes
     b3.nodes = nodes
@@ -48,6 +65,7 @@ def test_poa():
     assert b1.proof_of_authority() == b2.proof_of_authority() == b3.proof_of_authority(), "Different chosen leaders"
 
     leader1 = b1.proof_of_authority()
-    sleep(10)
+    sleep(1)
     leader2 = b1.proof_of_authority()
     assert leader1 is not leader2
+    

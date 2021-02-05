@@ -1,7 +1,7 @@
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.backends.openssl.rsa import (_RSAPrivateKey,
                                                       _RSAPublicKey)
-from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
 
@@ -32,7 +32,7 @@ def is_signed(obj):
 
 def verify_signature(obj) -> bool:
         """
-        Verifies signed transaction using a public key.
+        Verifies signed object using a public key.
         """
 
         try:
@@ -49,12 +49,17 @@ def verify_signature(obj) -> bool:
             return False
         return True
 
-def numerize_public_key(self) -> str:
+def numerize_public_key(o: object) -> str:
         """
-        Returns public key in a numeric, human readable format
+        Returns public key of an object in a numeric, human readable format
         """
-        n = self.public_key.public_numbers().n
-        e = self.public_key.public_numbers().e
+        n = o.public_key.public_numbers().n
+        e = o.public_key.public_numbers().e
+        return f"{n}|{e}"
+
+def directly_numerize_public_key(key: _RSAPublicKey) -> str:
+        n = key.public_numbers().n
+        e = key.public_numbers().e
         return f"{n}|{e}"
 
 def denumerize_public_key(key_numeric: str) -> _RSAPublicKey:

@@ -1,18 +1,16 @@
-from datetime import datetime
-from typing import Dict, Tuple
-import os
 import json
+from datetime import datetime
+from typing import Dict, List
 
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
-from cryptography.hazmat.backends.openssl.rsa import (_RSAPrivateKey,
-                                                      _RSAPublicKey)
 import py2p
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.backends.openssl.rsa import (_RSAPrivateKey)
+from cryptography.hazmat.primitives.asymmetric import rsa
 from merklelib import MerkleTree
 
 from block import Block
-from signing import verify_signature, sign
+from id_bank import ID_bank
+from signing import numerize_public_key, sign, verify_signature
 from transaction import Transaction
 
 
@@ -26,61 +24,66 @@ class Blockchain:
         Blockchain class constructor
         """
 
-        self.chain = []
-        self.pending_transactions = []
+        self.chain: List[Block] = []
+        self.pending_transactions: List[Transaction] = []
         genesis_block = Block(0, [], datetime(2000, 1, 1, 0, 0), "0", None)
         self.chain.append(genesis_block)
         self.sock = sock
 
-        if self.sock is not None:
-            self.nodes = {self.sock.id.decode('utf-8'): 10}
-        else:
-            self.nodes = None
-
         # generate private key and public key if not found
-        if not ("private_key.pem" in os.listdir() and "public_key.pem" in os.listdir()):
-            private_key = Blockchain.generate_private_key()
-            public_key = Blockchain.generate_public_key(private_key)
+        #if not ("private_key.pem" in os.listdir() and "public_key.pem" in os.listdir()):
+        #if True:
+        self.private_key = Blockchain.generate_private_key()
+        self.public_key = Blockchain.generate_public_key(self.private_key)
 
-            public_pem = public_key.public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo
-            )
+            # public_pem = public_key.public_bytes(
+            #     encoding=serialization.Encoding.PEM,
+            #     format=serialization.PublicFormat.SubjectPublicKeyInfo
+            # )
 
-            private_pem = private_key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=serialization.NoEncryption()
-            )
+            # private_pem = private_key.private_bytes(
+            #     encoding=serialization.Encoding.PEM,
+            #     format=serialization.PrivateFormat.PKCS8,
+            #     encryption_algorithm=serialization.NoEncryption()
+            # )
 
-            with open('public_key.pem', 'wb') as f:
-                f.write(public_pem)
+            # with open('public_key.pem', 'wb') as f:
+            #     f.write(public_pem)
 
-            with open('private_key.pem', 'wb') as f:
-                f.write(private_pem)
+            # with open('private_key.pem', 'wb') as f:
+            #     f.write(private_pem)
 
-    @property
-    def private_key(self) -> _RSAPrivateKey:
-        """
-        Returns private key object
-        """
-        with open("private_key.pem", "rb") as private_key_file:
-            return serialization.load_pem_private_key(
-                private_key_file.read(),
-                password=None,
-                backend=default_backend()
-            )
+        self.id_bank = ID_bank(numerize_public_key(self))
+        self.id_bank.update({
+                numerize_public_key(self):{
+                    "mesh_id": str(getattr(self.sock, 'id', None)),
+                    "score": 10
+                }
+            })
+        
 
-    @property
-    def public_key(self) -> _RSAPublicKey:
-        """
-        Returns public key object
-        """
-        with open("public_key.pem", "rb") as key_file:
-            return serialization.load_pem_public_key(
-                key_file.read(),
-                backend=default_backend()
-            )
+    # @property
+    # def private_key(self) -> _RSAPrivateKey:
+    #     """
+    #     Returns private key object
+    #     """
+    #     with open("private_key.pem", "rb") as private_key_file:
+    #         return serialization.load_pem_private_key(
+    #             private_key_file.read(),
+    #             password=None,
+    #             backend=default_backend()
+    #         )
+
+    # @property
+    # def public_key(self) -> _RSAPublicKey:
+    #     """
+    #     Returns public key object
+    #     """
+    #     with open("public_key.pem", "rb") as key_file:
+    #         return serialization.load_pem_public_key(
+    #             key_file.read(),
+    #             backend=default_backend()
+    #         )
 
     @staticmethod
     def generate_private_key() -> _RSAPrivateKey:
@@ -132,29 +135,18 @@ class Blockchain:
         """
         Chooses miner based on their authority
         """
-        # Update peer list
-        if self.sock is not None:
-            for peer in self.sock.routing_table:
-                if peer.decode('utf-8') not in self.nodes:
-                    self.nodes[peer.decode('utf-8')] = 10
+        # Peers list
+        nodes = getattr(self, 'nodes', self.id_bank.bank)
 
         # Sort potential leaders for bad ones
-        nodes = list(self.nodes.keys())
-        nodes = [n for n in nodes if self.nodes[n] >= 10]
+        nodes = [peer["pubkey"] for peer in nodes if peer["score"] >= 10]
 
         # Choose leader at 10-seconds intervals
         time = datetime.now() - self.chain[0].datetime
-        last_second = int(str(time.seconds)[-1])
-        time = int(time.total_seconds()) - last_second
-        leader_n = int(time/10 % len(nodes))
+        leader_n = int(time.total_seconds() % len(nodes)) #/10 % len(nodes))
         nodes.sort()
 
-        leader = nodes[leader_n]
-
-        # if self.sock is not None:
-        #     self.sock.send(b'whisper', ('miner', miner))
-
-        return leader
+        return nodes[leader_n]
 
     @property
     def last_block(self) -> Block:
@@ -181,12 +173,13 @@ class Blockchain:
             miner = None
 
         if my_id == miner:
-            delta = datetime.now() - self.last_block.datetime
-            if delta.total_seconds() < 3 and self.last_block.public_key == self.public_key:
-                # Too fast!
-                return
+            # delta = datetime.now() - self.last_block.datetime
+            # if delta.total_seconds() < 3 and self.last_block.public_key == self.public_key:
+            #     # Too fast!
+            #     return
             
-            elif len(self.pending_transactions) > 0:
+            #el--v
+            if len(self.pending_transactions) > 0:
                 # Setup block generation
                 new_id = self.last_block.block_id + 1
                 prev_hash = self.last_block.compute_hash()
@@ -198,7 +191,7 @@ class Blockchain:
                         self.pending_transactions.remove(t)
                         print("Removed invalid transaction")
                         if self.sock is not None:
-                            self.sock.send(f'invalid_transaction',
+                            self.sock.send('invalid_transaction',
                                             t.numerize_public_key())
                 
                 print(f"Pending transactions: {len(self.pending_transactions)}")
