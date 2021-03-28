@@ -4,13 +4,14 @@ from typing import Dict, List
 
 import py2p
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.backends.openssl.rsa import (_RSAPrivateKey)
+from cryptography.hazmat.backends.openssl.rsa import _RSAPrivateKey
 from cryptography.hazmat.primitives.asymmetric import rsa
 from merklelib import MerkleTree
 
 from block import Block
 from id_bank import ID_bank
-from signing import numerize_public_key, sign, verify_signature
+from logger import log
+from signing import directly_numerize_public_key, numerize_public_key, sign, verify_signature
 from transaction import Transaction
 
 
@@ -29,6 +30,11 @@ class Blockchain:
         genesis_block = Block(0, [], datetime(2000, 1, 1, 0, 0), "0", None)
         self.chain.append(genesis_block)
         self.sock = sock
+
+        if self.sock is not None:
+            self.nodes = {self.sock.id.decode('utf-8'): 0}
+        else:
+            self.nodes = None
 
         # generate private key and public key if not found
         #if not ("private_key.pem" in os.listdir() and "public_key.pem" in os.listdir()):
@@ -53,13 +59,13 @@ class Blockchain:
             # with open('private_key.pem', 'wb') as f:
             #     f.write(private_pem)
 
-        self.id_bank = ID_bank(numerize_public_key(self))
-        self.id_bank.update({
-                numerize_public_key(self):{
-                    "mesh_id": str(getattr(self.sock, 'id', None)),
-                    "score": 10
-                }
-            })
+        # self.id_bank = ID_bank(numerize_public_key(self))
+        # self.id_bank.update({
+        #        numerize_public_key(self):{
+        #            "mesh_id": str(getattr(self.sock, 'id', None)),
+        #            "score": 0
+        #        }
+        #    })
         
 
     # @property
@@ -131,15 +137,33 @@ class Blockchain:
 
         return self.add_transaction(transaction)
 
-    def proof_of_authority(self):
+    def proof_of_authentication(self):
         """
-        Chooses miner based on their authority
+        Chooses miner based on PoAh
         """
         # Peers list
-        nodes = getattr(self, 'nodes', self.id_bank.bank)
+        #nodes = getattr(self, 'nodes', self.id_bank.bank
+        #nodes = self.sock.
+        
 
         # Sort potential leaders for bad ones
-        nodes = [peer["pubkey"] for peer in nodes if peer["score"] >= 10]
+        #nodes = [peer for peer in nodes if peer["score"] >= 10]
+        if self.sock is not None:
+            for peer in self.sock.routing_table:
+                if peer.decode('utf-8') not in self.nodes:
+                    # New peers
+                    self.nodes[peer.decode('utf-8')] = 0
+        
+        # Sort potential leaders for bad ones
+        nodes = list(self.nodes.keys())
+        nodes = [n for n in nodes if self.nodes[n] >= 10]
+        if len(nodes) == 0:
+            # No one is a leader!
+            # We choose the first one, and give them 10 points
+            nodes = list(self.nodes.keys())
+            nodes.sort()
+            self.nodes[nodes[0]] = 10
+            return nodes[0]
 
         # Choose leader at 10-seconds intervals
         time = datetime.now() - self.chain[0].datetime
@@ -162,17 +186,26 @@ class Blockchain:
         """
         # Online
         if self.sock is not None:
-            self.sock.send('mine') # Send out mine order
-            miner = self.proof_of_authority()
+            self.sock.send('mine', str(directly_numerize_public_key(self.public_key)), str(self.sock.id)) # Send out mine order
+            miner = self.proof_of_authentication()
             # print(
             #     f"Miner is: {miner[:3]} out of: {[peer[:3] for peer in self.nodes]}")
             my_id = self.sock.id.decode('utf-8')
+            # for _peer in self.sock.routing_table:
+            #     if not self.id_bank.collection.find_one({'mesh_id': str(_peer)}):
+            #         self.id_bank.update({
+
+            #         })
         # Offline
         else:
             my_id = None
             miner = None
 
         if my_id == miner:
+            log.debug("LEADER",
+            {
+                'mesh_id': str(self.sock.id) if self.sock is not None else None,
+            })
             # delta = datetime.now() - self.last_block.datetime
             # if delta.total_seconds() < 3 and self.last_block.public_key == self.public_key:
             #     # Too fast!
@@ -182,7 +215,7 @@ class Blockchain:
             if len(self.pending_transactions) > 0:
                 # Setup block generation
                 new_id = self.last_block.block_id + 1
-                prev_hash = self.last_block.compute_hash()
+                prev_hash = hash(self.last_block)
                 time = datetime.now()
 
                 # Verify transactions:
@@ -192,7 +225,7 @@ class Blockchain:
                         print("Removed invalid transaction")
                         if self.sock is not None:
                             self.sock.send('invalid_transaction',
-                                            t.numerize_public_key())
+                                            hash(t))
                 
                 print(f"Pending transactions: {len(self.pending_transactions)}")
                 # New block
@@ -200,9 +233,15 @@ class Blockchain:
                               time, prev_hash, self.public_key)
                 sign(block, self.private_key)
 
+                log.debug("MINED",
+                {
+                'mesh_id': self.sock.id if self.sock is not None else None,
+                })
+
                 # Send out block
                 if self.sock is not None:
                     self.sock.send('new_block', block.toJSON())
+
                 self.chain.append(block)
                 self.pending_transactions = []
                 print("Mined")
@@ -212,7 +251,7 @@ class Blockchain:
         Verifies if chain is valid
         """
         for i in range(1, len(self.chain)):
-            if self.chain[i].prev_hash != self.chain[i-1].compute_hash():
+            if self.chain[i].prev_hash != hash(self.chain[i-1]):
                 return False
             elif not self.chain[i].verify_block():
                 return False

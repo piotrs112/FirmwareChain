@@ -2,7 +2,7 @@ from random import choice, randint
 from time import sleep
 
 from node import Node
-from signing import sign
+from signing import directly_numerize_public_key, sign
 from transaction import Transaction
 
 
@@ -24,6 +24,30 @@ def test_connection():
     assert n.sock.id in [peer for peer in n2.sock.routing_table]
     assert n2.sock.id in [peer for peer in n.sock.routing_table]
 
+    assert n.sock.status == "Nominal"
+
+def test_id_map():
+    port = randint(6002, 6100)
+    port2 = port + 1
+
+    n = Node(port=port)
+    n2 = Node(port=port2)
+
+    n.sock.connect("0.0.0.0", port=port2)
+    sleep(0.1)
+
+    id_1 = {directly_numerize_public_key(n.bc.public_key): str(n.sock.id)}
+    id_2 = {directly_numerize_public_key(n2.bc.public_key): str(n2.sock.id)}
+    
+    assert n.id_pk_map == {directly_numerize_public_key(n.bc.public_key): str(n.sock.id)}
+    assert n2.id_pk_map == {directly_numerize_public_key(n2.bc.public_key): str(n2.sock.id)}
+
+    n2.passport()
+    sleep(0.1)
+
+    assert n.id_pk_map.get(directly_numerize_public_key(n2.bc.public_key)) == str(n2.sock.id)
+    assert n2.id_pk_map.get(directly_numerize_public_key(n.bc.public_key)) == str(n.sock.id)
+
 def test_transaction_propagation():
     port = randint(6002, 6100)
     port2 = port + 1
@@ -40,6 +64,8 @@ def test_transaction_propagation():
 
     sleep(0.5)
     assert node.bc.pending_transactions[0] == t
+
+    assert node.sock.status == "Nominal"
 
 def test_mining():
     n_nodes = 4
@@ -73,3 +99,6 @@ def test_mining():
         
     for node in vals[1:]:
         assert node.bc.chain == node0.bc.chain
+
+    for node in vals:
+        assert node.sock.status == "Nominal"

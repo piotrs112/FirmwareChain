@@ -1,3 +1,4 @@
+import hashlib
 import json
 
 from cryptography.hazmat.backends.openssl.rsa import _RSAPublicKey
@@ -57,7 +58,14 @@ class Transaction:
         :param other: Transaction object to compare to
         """
         if self.filename == other.filename and self.version == other.version and self.file_hash == other.file_hash:
-            return True
+            try:
+                if self.public_key.public_numbers() == other.public_key.public_numbers():
+                    return True
+                else:
+                    return False
+            except AttributeError:
+                return False
+            
         else:
             return False
             # todo porownac podpis i 
@@ -74,3 +82,12 @@ class Transaction:
             s += "Verified"
 
         return s
+    
+    def __hash__(self):
+        """
+        Computes sha256 hash of the transaction.
+        """
+
+        _bytes = self.representation
+        sha = hashlib.sha256(_bytes).hexdigest()
+        return int(sha, 16)

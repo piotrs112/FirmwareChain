@@ -3,7 +3,8 @@ import json
 from datetime import datetime
 from typing import List
 
-from cryptography.hazmat.backends.openssl.rsa import  _RSAPublicKey
+from cryptography.hazmat.backends.openssl.rsa import _RSAPublicKey
+from merklelib import MerkleTree
 
 from signing import numerize_public_key, sign, verify_signature
 from transaction import Transaction
@@ -31,14 +32,27 @@ class Block:
         self.public_key = public_key
         self.signature = None
 
-    def compute_hash(self) -> str:
+    def __hash__(self) -> str:
         """
         Computes sha256 hash of the block.
         """
 
-        block = json.dumps(self.toJSON(), sort_keys=True)
-        sha = hashlib.sha256(block.encode()).hexdigest()
-        return sha
+        block = self.representation
+        sha = hashlib.sha256(block).hexdigest()
+        return int(sha, 16)
+
+    @property
+    def merkle_tree(self):
+        """
+        Returns Merkle tree object of transacions
+        """
+        return MerkleTree(self.transactions)
+
+    def transactions_merkle_hash(self):
+        """
+        Returns hash of transactions' merkle tree
+        """
+        return self.merkle_tree.merkle_root
 
     def verify_block(self) -> bool:
         """
@@ -62,7 +76,7 @@ class Block:
         return f"""
         Block ID: {self.block_id}\n
         Transactions: {len(self.transactions)}\n
-        Hash: {self.compute_hash()}\n
+        Hash: {hash(self)}\n
         Last hash: {self.prev_hash}\n
         Datetime: {self.datetime}\n
         Pub key: {pk}\n
@@ -100,7 +114,7 @@ class Block:
         Returns bytes representation of block
         """
 
-        transactions = [t.toJSON() for t in self.transactions]
+        transactions = self.transactions_merkle_hash()
         try:
             pub_key = str(numerize_public_key(self))
         except AttributeError:

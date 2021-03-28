@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from block import Block
 import random
 import sys
 from time import sleep
@@ -7,7 +8,9 @@ import py2p
 
 from blockchain import Blockchain
 from data_manipulation import fromJSON, transaction_fromJSON
-from signing import directly_numerize_public_key, numerize_public_key, sign, verify_signature
+from logger import log
+from signing import (directly_numerize_public_key, numerize_public_key, sign,
+                     verify_signature)
 from transaction import Transaction
 
 
@@ -24,13 +27,15 @@ class Node:
     Combining blockchain with secure P2P connectivity
     """
 
-    def __init__(self, port=4444):
+    def __init__(self, port=6000):
         """
         Initialize node.
         :param port: Port on which the node's socket will be operating
         """
         self.sock = py2p.MeshSocket(
             '0.0.0.0', port, py2p.Protocol('mesh', 'SSL'))
+        
+        self.type = "trusted" if port == 6000 else "normal"
 
         self.connection = py2p.mesh.MeshConnection(
             sock=self.sock, server=self.sock)
@@ -42,8 +47,8 @@ class Node:
         #self.sock.once('connect', self.once_connect)
         self.sock.on('message', self.handle_incoming)
 
-        self.longest_chain = 1
-        self.longest_chain_owner = None
+        self.incoming_blocks = []
+        self.id_pk_map = {directly_numerize_public_key(self.bc.public_key): str(self.sock.id)}
 
     def handle_incoming(self, connection) -> bool:
         """
@@ -51,25 +56,40 @@ class Node:
         :param connection: Connection object
         """
         msg = connection.recv()
-        print(msg.packets)
+        #print(msg.packets)
         packets = msg.packets[1:]
         # Add new transaction
         if packets[0] == 'new_transaction':
-            print("newtransaction received")
+            log.debug(
+                "GOT_NEW_TRANSACTION",
+                {
+                'node': numerize_public_key(self.bc),
+                'data': packets[1]
+                })
+            
+            print("new transaction received")
             t = packets[1]
-            try:
-                transaction = transaction_fromJSON(t)
-                if transaction not in self.bc.pending_transactions:
-                    if verify_signature(transaction):
-                        self.bc.add_transaction(transaction)
-                    else:
-                        # Punish for invalid transaction
-                        self.bc.id_bank.modify(transaction.public_key, -2)
-            except Exception as e:
-                print(e.with_traceback())
+            #try:
+            transaction = transaction_fromJSON(t)
+            if transaction not in self.bc.pending_transactions:
+                if verify_signature(transaction):
+                    self.bc.add_transaction(transaction)
+                else:
+                    # Punish for invalid transaction
+                    #self.bc.id_bank.modify(transaction.public_key, -2)
+                    self.punish(2, transaction)
+
+            #except Exception as e:
+            #    print(e.with_traceback())
 
         # Mined new block
         elif packets[0] == 'new_block':
+            log.debug("GOT_NEW_BLOCK",
+                {
+                'node': numerize_public_key(self.bc),
+                'data': packets[1]
+                })
+
             new_block = fromJSON(packets[1])
             if new_block not in self.bc.chain:
                 if new_block.verify_block():
@@ -77,48 +97,58 @@ class Node:
                     if not self.bc.verify_chain():
                         self.bc.chain.remove(new_block)
                         # Punish for invalid block
-                        self.bc.id_bank.modify(new_block.public_key, -5)
-
+                        #self.bc.id_bank.modify(new_block.public_key, -5)
+                        self.punish(5, new_block)
                     else:
                         # for t in self.bc.pending_transactions:
                         #     if t in self.bc.last_block.transactions:
                         #         self.bc.pending_transactions.remove(t)
                         self.bc.pending_transactions = []
+
                         # Reward for valid block
-                        self.bc.id_bank.modify(new_block.public_key, 1)
+                        blocks_to_reward = [b for b in self.incoming_blocks if b.datetime < new_block.datetime]
+                        for block in blocks_to_reward:
+                            self.reward(1, block)
                 else:
                     print(bcolors.FAIL + "Invalid block!" + bcolors.ENDC)
                     # Punish for invalid block
-                    self.bc.id_bank.modify(new_block.public_key, -5)
+                    #self.bc.id_bank.modify(new_block.public_key, -5)
+                    self.punish(5, new_block)
+
+        # Incoming blocks before signing
+        elif packets[0] == 'incoming_block':
+            self.incoming_blocks.append(fromJSON(packets[1]))
 
         # Someone asking for chain length
-        elif packets[0] == 'get_chain_length':
-            msg.reply(type=b'whisper', packets=len(
-                self.bc.chain), sender=msg.sender)
+        # elif packets[0] == 'get_chain_length':
+        #     msg.reply(type=b'whisper', packets=len(
+        #         self.bc.chain), sender=msg.sender)
 
         # Someone sending chain length
-        elif packets[0] == 'set_chain_length':
-            # todo podmiana od razu czy po czasie?
-            if packets[1] > self.longest_chain:
-                self.longest_chain = packets[1]
-                self.longest_chain_owner = msg.sender
+        # elif packets[0] == 'set_chain_length':
+        #     # todo podmiana od razu czy po czasie?
+        #     if packets[1] > self.longest_chain:
+        #         self.longest_chain = packets[1]
+        #         self.longest_chain_owner = msg.sender
 
-                print(f"{self.longest_chain} {self.longest_chain_owner}")
+        #         print(f"{self.longest_chain} {self.longest_chain_owner}")
 
         # Start mining
         elif packets[0] == 'mine':
+            log.debug("START_MINING")
             self.bc.mine()
             #print(f"Got mine order!")
 
         # Update new node in id bank
         elif packets[0] == 'passport':
             print("PASSPORT")
-            self.bc.id_bank.update({
-                packets[1]: {
-                    "mesh_id": str(packets[2]),
-                    "score": 10
-                }
-            })
+            # self.bc.id_bank.update({
+            #     packets[1]: {
+            #         "mesh_id": str(packets[2]),
+            #         "score": 10
+            #     }
+            # })
+            self.id_pk_map.update({packets[1]: packets[2]})
             self.passport()
 
         return True
@@ -132,9 +162,8 @@ class Node:
             f"New connection, total: {len(str([str(k)[2:-1] for k in self.sock.routing_table]))}")
         sleep(1)
         print("on _con")
-        sock.send('passport', directly_numerize_public_key(self.bc.public_key), str(self.sock.id))
-        # todo sign this data?
-        # todo get it working
+        self.passport()
+        #todo get it working
 
     def once_connect(self, sock: py2p.MeshSocket):
         """
@@ -144,7 +173,16 @@ class Node:
         print("once")
 
     def passport(self):
-        self.sock.send('passport', numerize_public_key(self.bc), self.sock.id)
+        self.sock.send('passport', numerize_public_key(self.bc), str(self.sock.id))
+    
+    def reward(self, points, o: object):
+        score = self.bc.nodes.get(self.id_pk_map[numerize_public_key(o)])
+        if score is not None:
+            score -= 2
+            self.bc.nodes[self.id_pk_map[numerize_public_key(o)]]
+
+    def punish(self, points, o: object):
+        self.reward(-points, o)
 
 
 class bcolors:
@@ -235,8 +273,8 @@ def main():
                 m = i.split(" ")
                 node.sock.send([str(j) for j in m[1:]])
 
-            elif i == 'mine':
-                node.bc.mine()
+            elif i == 'mine' or i == 'm':
+                node.sock.send('mine')
 
             elif i == 'add_test_transaction' or i == 't':
                 num = random.randint(1, 100)
@@ -265,6 +303,10 @@ def main():
                 print(node.bc.id_bank.bank)
             elif i == "passport":
                 node.passport()
+            elif i == "map":
+                print(node.id_pk_map)
+            elif i == "points":
+                print(node.bc.nodes)
             else:
                 print(bcolors.FAIL + "Wrong command." + bcolors.ENDC)
 

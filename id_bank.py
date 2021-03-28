@@ -63,9 +63,9 @@ class ID_bank():
 
         """
         bank: dict = self.bank
-        print(bank)
+        #print(bank)
         bank.update(data)
-        print(bank)
+        #print(bank)
         self.collection.find_one_and_replace({
             'owner': self.owner
         },
