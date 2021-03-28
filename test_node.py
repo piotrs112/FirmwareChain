@@ -58,7 +58,7 @@ def test_transaction_propagation():
     node.sock.connect("0.0.0.0", port=port)
     sleep(0.1)
 
-    t = Transaction(server.bc.public_key, "v1", "hash@#$", "main.h")
+    t = Transaction(server.bc.public_key, {'test': 'data'})
     sign(t, server.bc.private_key)
     server.bc.add_transaction(t)
 
@@ -88,7 +88,7 @@ def test_mining():
         server = None
         for j in range(3):
             server = choice(vals)
-            t = Transaction(server.bc.public_key, f"v{i}", f"hash{j}", "main.h")
+            t = Transaction(server.bc.public_key, {f'test_{i}': f'data_{i}'})
             sign(t, server.bc.private_key)
             server.bc.add_transaction(t)
             sleep(0.1)

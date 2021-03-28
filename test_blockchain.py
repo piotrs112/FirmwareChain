@@ -18,7 +18,7 @@ def test_init():
 
 def test_add_transaction():
     bc = Blockchain()
-    t = Transaction(bc.public_key, "v1", "xyz", "main.h")
+    t = Transaction(bc.public_key, {'test': 'data'})
     sign(t, bc.private_key)
 
     bc.add_transaction(t)
@@ -27,7 +27,7 @@ def test_add_transaction():
 
 def test_mining():
     bc = Blockchain()
-    t = Transaction(bc.public_key, "v1", "xyz", "main.h")
+    t = Transaction(bc.public_key, {'test': 'data'})
     sign(t, bc.private_key)
 
     bc.add_transaction(t)
@@ -61,7 +61,7 @@ def test_poah():
 def test_add_validated():
     node = Node()
     bc = node.bc
-    t = Transaction(bc.public_key, "v1", "xyz", "main.h")
+    t = Transaction(bc.public_key, {'test': 'data'})
     sign(t, bc.private_key)
     bc.add_transaction(t)
     bc.mine()
