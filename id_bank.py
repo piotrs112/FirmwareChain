@@ -88,7 +88,8 @@ class ID_bank():
             return
 
         bank = self.bank
-        if data := self.get(pub_key):
+        data = self.get(pub_key)
+        if data:
             data['score'] = data['score'] + points
             
             if data['score'] < 0:
