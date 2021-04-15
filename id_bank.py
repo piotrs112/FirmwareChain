@@ -1,4 +1,4 @@
-from cryptography.hazmat.backends.openssl.rsa import _RSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from pymongo import MongoClient
 
 from signing import directly_numerize_public_key
@@ -41,7 +41,7 @@ class ID_bank():
 
         return dict(bank_obj)
     
-    def get(self, pub_key: _RSAPublicKey) -> dict:
+    def get(self, pub_key: RSAPublicKey) -> dict:
         try:
             return self.bank[directly_numerize_public_key(pub_key)]
         except KeyError:
@@ -78,7 +78,7 @@ class ID_bank():
         self.collection.delete_one({'owner': self.owner})
         #self.collection.drop(f"id_bank_{self.owner}")
 
-    def modify(self, pub_key: _RSAPublicKey, points=-1) -> bool:
+    def modify(self, pub_key: RSAPublicKey, points=-1):
         """
         Adds or subtracts points from peer.
         :param pub_key: Public Key

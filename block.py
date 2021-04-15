@@ -3,10 +3,10 @@ import json
 from datetime import datetime
 from typing import List
 
-from cryptography.hazmat.backends.openssl.rsa import _RSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from merklelib import MerkleTree
 
-from signing import numerize_public_key, sign, verify_signature
+from signing import numerize_public_key, verify_signature
 from transaction import Transaction
 
 
@@ -15,7 +15,7 @@ class Block:
     Block class.
     """
 
-    def __init__(self, block_id: int, transactions: List[Transaction], datetime: datetime, prev_hash: str, public_key: _RSAPublicKey = None):
+    def __init__(self, block_id: int, transactions: List[Transaction], datetime: datetime, prev_hash: str, public_key: RSAPublicKey):
         """
         Block class constructor
         :param block_id: ID of the block, unique
@@ -32,7 +32,7 @@ class Block:
         self.public_key = public_key
         self.signature = None
 
-    def __hash__(self) -> str:
+    def sha(self) -> int:
         """
         Computes sha256 hash of the block.
         """
@@ -41,18 +41,18 @@ class Block:
         sha = hashlib.sha256(block).hexdigest()
         return int(sha, 16)
 
-    @property
-    def merkle_tree(self):
-        """
-        Returns Merkle tree object of transacions
-        """
-        return MerkleTree(self.transactions)
+    # @property
+    # def merkle_tree(self):
+    #     """
+    #     Returns Merkle tree object of transacions
+    #     """
+    #     return MerkleTree(self.transactions)
 
-    def transactions_merkle_hash(self):
-        """
-        Returns hash of transactions' merkle tree
-        """
-        return self.merkle_tree.merkle_root
+    # def transactions_merkle_hash(self):
+    #     """
+    #     Returns hash of transactions' merkle tree
+    #     """
+    #     return self.merkle_tree.merkle_root
 
     def verify_block(self) -> bool:
         """
@@ -76,7 +76,7 @@ class Block:
         return f"""
         Block ID: {self.block_id}\n
         Transactions: {len(self.transactions)}\n
-        Hash: {hash(self)}\n
+        Hash: {hex(self.sha())}\n
         Last hash: {self.prev_hash}\n
         Datetime: {self.datetime}\n
         Pub key: {pk}\n
@@ -114,7 +114,7 @@ class Block:
         Returns bytes representation of block
         """
 
-        transactions = self.transactions_merkle_hash()
+        transactions = [t.sha() for t in self.transactions]
         try:
             pub_key = str(numerize_public_key(self))
         except AttributeError:
@@ -141,10 +141,7 @@ class Block:
             if self.public_key.public_numbers() != other.public_key.public_numbers():
                 return False
         except AttributeError:
-            if self.block_id == 0 and other.block_id == 0:
-                pass
-            else:
-                return False
+            pass
         return True
 
     def __ne__(self, other):

@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from time import sleep
 from typing import Dict, List
 
 import py2p
@@ -36,11 +37,12 @@ class Blockchain:
         else:
             self.nodes = None
 
+        self.private_key = Blockchain.generate_private_key()
+        self.public_key = Blockchain.generate_public_key(self.private_key)
+
         # generate private key and public key if not found
         #if not ("private_key.pem" in os.listdir() and "public_key.pem" in os.listdir()):
         #if True:
-        self.private_key = Blockchain.generate_private_key()
-        self.public_key = Blockchain.generate_public_key(self.private_key)
 
             # public_pem = public_key.public_bytes(
             #     encoding=serialization.Encoding.PEM,
@@ -66,33 +68,9 @@ class Blockchain:
         #            "score": 0
         #        }
         #    })
-        
-
-    # @property
-    # def private_key(self) -> _RSAPrivateKey:
-    #     """
-    #     Returns private key object
-    #     """
-    #     with open("private_key.pem", "rb") as private_key_file:
-    #         return serialization.load_pem_private_key(
-    #             private_key_file.read(),
-    #             password=None,
-    #             backend=default_backend()
-    #         )
-
-    # @property
-    # def public_key(self) -> _RSAPublicKey:
-    #     """
-    #     Returns public key object
-    #     """
-    #     with open("public_key.pem", "rb") as key_file:
-    #         return serialization.load_pem_public_key(
-    #             key_file.read(),
-    #             backend=default_backend()
-    #         )
 
     @staticmethod
-    def generate_private_key() -> _RSAPrivateKey:
+    def generate_private_key() -> rsa.RSAPrivateKey:
         """
         Generates private key
         """
@@ -103,7 +81,7 @@ class Blockchain:
         )
 
     @staticmethod
-    def generate_public_key(private_key: _RSAPrivateKey):
+    def generate_public_key(private_key: rsa.RSAPrivateKey):
         """
         Generates public key
         :param private_key: Private key to generate public key from
@@ -126,13 +104,11 @@ class Blockchain:
     def add_transaction_from_dict(self, d: Dict[str, str]) -> bool:
         """
         Creates transaction from dict and adds it to pending transactions.
-        :param d: Dictionary with keys: version, filename, file_hash
+        :param d: Dictionary with data
         """
         transaction = Transaction(
             self.public_key,
-            d["version"],
-            d["file_hash"],
-            d["filename"]
+            d
         )
 
         return self.add_transaction(transaction)
@@ -201,40 +177,35 @@ class Blockchain:
             my_id = None
             miner = None
 
-        if my_id == miner:
-            log.debug("LEADER",
-            {
-                'mesh_id': str(self.sock.id) if self.sock is not None else None,
-            })
-            # delta = datetime.now() - self.last_block.datetime
-            # if delta.total_seconds() < 3 and self.last_block.public_key == self.public_key:
-            #     # Too fast!
-            #     return
+        log.debug("MINE_FCN_STARTED",
+        extra={
+            'mesh_id': str(self.sock.id) if self.sock is not None else None,
+        })
+        
+        if len(self.pending_transactions) > 0:
+            # Setup block generation
+            new_id = self.last_block.block_id + 1
+            prev_hash = self.last_block.sha()
+            time = datetime.now()
+
+            # Verify transactions:
+            for t in self.pending_transactions:
+                if not verify_signature(t):
+                    self.pending_transactions.remove(t)
+                    print("Removed invalid transaction")
+                    if self.sock is not None:
+                        self.sock.send('invalid_transaction',
+                                        t.sha())
             
-            #el--v
-            if len(self.pending_transactions) > 0:
-                # Setup block generation
-                new_id = self.last_block.block_id + 1
-                prev_hash = hash(self.last_block)
-                time = datetime.now()
+            print(f"Pending transactions: {len(self.pending_transactions)}")
+            # New block
+            block = Block(new_id, self.pending_transactions,
+                            time, hex(prev_hash), self.public_key)
+            sign(block, self.private_key)
 
-                # Verify transactions:
-                for t in self.pending_transactions:
-                    if not verify_signature(t):
-                        self.pending_transactions.remove(t)
-                        print("Removed invalid transaction")
-                        if self.sock is not None:
-                            self.sock.send('invalid_transaction',
-                                            hash(t))
-                
-                print(f"Pending transactions: {len(self.pending_transactions)}")
-                # New block
-                block = Block(new_id, self.pending_transactions,
-                              time, prev_hash, self.public_key)
-                sign(block, self.private_key)
-
-                log.debug("MINED",
-                {
+            if my_id == miner:
+                log.debug("I_AM_LEADER",
+                extra={
                 'mesh_id': self.sock.id if self.sock is not None else None,
                 })
 
@@ -245,13 +216,20 @@ class Blockchain:
                 self.chain.append(block)
                 self.pending_transactions = []
                 print("Mined")
+            else:
+                log.debug("MINED_NOT_LEADER",
+                extra={
+                'mesh_id': self.sock.id if self.sock is not None else None,
+                })
+                if self.sock is not None:
+                    self.sock.send('incoming_block', block.toJSON())
 
     def verify_chain(self) -> bool:
         """
         Verifies if chain is valid
         """
         for i in range(1, len(self.chain)):
-            if self.chain[i].prev_hash != hash(self.chain[i-1]):
+            if self.chain[i].prev_hash != hex(self.chain[i-1].sha()):
                 return False
             elif not self.chain[i].verify_block():
                 return False
@@ -259,15 +237,38 @@ class Blockchain:
                 return False
         return True
 
-    @property
-    def blockchain_root(self) -> str:
-        """
-        Calculates merkle tree root of the whole blockchain
-        """
-        return MerkleTree(self.chain).merkle_root
-
     def toJSON(self):
         """
         Serializes chain to JSON format
         """
         return json.dumps([b.toJSON() for b in self.chain])
+
+    # @property
+    # def private_key(self) -> _RSAPrivateKey:
+    #     """
+    #     Returns private key object
+    #     """
+    #     with open("private_key.pem", "rb") as private_key_file:
+    #         return serialization.load_pem_private_key(
+    #             private_key_file.read(),
+    #             password=None,
+    #             backend=default_backend()
+    #         )
+
+    # @property
+    # def public_key(self) -> _RSAPublicKey:
+    #     """
+    #     Returns public key object
+    #     """
+    #     with open("public_key.pem", "rb") as key_file:
+    #         return serialization.load_pem_public_key(
+    #             key_file.read(),
+    #             backend=default_backend()
+    #         )
+
+    # @property
+    # def blockchain_root(self) -> str:
+    #     """
+    #     Calculates merkle tree root of the whole blockchain
+    #     """
+    #     return str(MerkleTree(self.chain).merkle_root)

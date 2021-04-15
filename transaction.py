@@ -1,7 +1,7 @@
 import hashlib
 import json
 
-from cryptography.hazmat.backends.openssl.rsa import _RSAPublicKey
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.primitives import serialization
 
 from signing import is_signed, numerize_public_key, verify_signature
@@ -12,7 +12,7 @@ class Transaction:
     Transaction class containing update data.
     """
 
-    def __init__(self, public_key: _RSAPublicKey, data: dict):
+    def __init__(self, public_key: RSAPublicKey, data: dict):
         """
         Transaction class constructor
         :param public_key: Author's public key
@@ -67,7 +67,7 @@ class Transaction:
 
     def __repr__(self) -> str:
         """
-        Representation for debuggin purposes
+        Representation for debugging purposes
         """
         s = ""
         if is_signed(self):
@@ -78,7 +78,7 @@ class Transaction:
 
         return s
     
-    def __hash__(self):
+    def sha(self):
         """
         Computes sha256 hash of the transaction.
         """

@@ -16,8 +16,7 @@ def fromJSON(block_json: str) -> Block:
     block = json.loads(block_json)
     block["datetime"] = datetime.fromtimestamp(block["datetime"])
     block['block_id'] = int(block['block_id'])
-
-
+    
     transactions = []
     for t in block["transactions"]:
         transactions.append(transaction_fromJSON(t))
@@ -51,21 +50,21 @@ def transaction_fromJSON(t: str) -> Transaction:
     t = json.loads(t)
     pub_key = denumerize_public_key(t['public_key'])
     new_transaction = Transaction(
-        pub_key, t['version'], t['file_hash'], t['filename'])
+        pub_key, json.loads(t['data']))
     if t['signature'] is not None:
         new_transaction.signature = b''.fromhex(t['signature'])
     return new_transaction
 
 
-def get_chain(ip: str) -> list:
-    """
-    Gets chain from blockchain node at ip address
-    :param ip: IP address
-    """
-    data = {'action': 'get_chain'}
-    r = requests.post(f'http://{ip}/rest/', json=data)
+# def get_chain(ip: str) -> list:
+#     """
+#     Gets chain from blockchain node at ip address
+#     :param ip: IP address
+#     """
+#     data = {'action': 'get_chain'}
+#     r = requests.post(f'http://{ip}/rest/', json=data)
 
-    data = r.json()
-    chain = [fromJSON(b) for b in data]
+#     data = r.json()
+#     chain = [fromJSON(b) for b in data]
 
-    return chain
+#     return chain

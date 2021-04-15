@@ -1,9 +1,12 @@
 import logging
 
-from mongolog.handlers import MongoHandler
+MONGO = False
 
-_log = logging.getLogger('blochain')
+_log = logging.getLogger('blockchain')
 _log.setLevel(logging.DEBUG)
-_log.addHandler(MongoHandler.to(db='bc_log', collection='log'))
+
+if MONGO:
+    from mongolog.handlers import MongoHandler
+    _log.addHandler(MongoHandler.to(db='bc_log', collection='log'))
 
 log = _log

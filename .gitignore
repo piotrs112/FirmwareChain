@@ -16,3 +16,8 @@ catch_stack_exception.py
 p2p_playground.py
 log.txt
 *.png
+*.svg
+*.txt
+*.pdf
+playground.py
+to_pseudocode.py

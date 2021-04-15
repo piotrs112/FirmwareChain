@@ -1,13 +1,15 @@
+import itertools
 from random import choice, randint
 from time import sleep
+from typing import Dict
 
 from node import Node
-from signing import directly_numerize_public_key, sign
+from signing import directly_numerize_public_key, numerize_public_key, sign
 from transaction import Transaction
 
 
 def test_init():
-    n = Node()
+    n = Node(port=6564)
     assert n.sock.status == "Nominal"
 
 
@@ -67,14 +69,18 @@ def test_transaction_propagation():
 
     assert node.sock.status == "Nominal"
 
+
 def test_mining():
-    n_nodes = 4
-    nodes = {}
+    N_NODES = 2
+    BLOCKS = 1
+    TRANSACTIONS_PER_BLOCK = 1
+
+    nodes: Dict[int, Node] = {}
     
-    for port in range(n:=randint(6000,7000), n + n_nodes):
+    for port in range(n:=randint(8000,9000), n + N_NODES):
         nodes[port] = Node(port=port)
 
-    for port, node in nodes.items():
+    for port, node in list(nodes.items())[:-1]:
         try:
             node.sock.connect("0.0.0.0", port=port+1)
         except Exception as e:
@@ -84,21 +90,35 @@ def test_mining():
     sleep(1)
 
     vals = list(nodes.values())
-    for i in range(3):
+
+    # connections = {}
+    # for port in nodes:
+    #     node = nodes[port]
+    #     connections[node.sock.id] = len([peer for peer in node.sock.routing_table])
+    # assert False, print(connections)
+
+    vals[0].passport()
+
+    sleep(5)
+
+    for i in range(BLOCKS):
         server = None
-        for j in range(3):
+        for j in range(TRANSACTIONS_PER_BLOCK):
             server = choice(vals)
-            t = Transaction(server.bc.public_key, {f'test_{i}': f'data_{i}'})
+            t = Transaction(server.bc.public_key, {f'test_{i}': f'data_{j}'})
             sign(t, server.bc.private_key)
             server.bc.add_transaction(t)
-            sleep(0.1)
+            sleep(1.5)
+        sleep(1.5)
         server.sock.send('mine')
-        sleep(0.1)
+        sleep(3)
 
     node0 = vals[0]
         
-    for node in vals[1:]:
-        assert node.bc.chain == node0.bc.chain
+    for n_1, n_2 in itertools.combinations(vals, 2):
+        assert n_1.bc.chain == n_2.bc.chain
 
     for node in vals:
-        assert node.sock.status == "Nominal"
+        if node.sock.status != "Nominal":
+            print(str(node.sock.status))
+        assert node.sock.status == "Nominal", str(node.sock.status)

@@ -62,7 +62,7 @@ def index():
                         signed = "Not signed"
                     line.append(signed)
                 elif type(v) is bytes:
-                    line.append(hash(v))
+                    line.append(v.sha())
                 else:
                     line.append(v)
             p_t.append(line)

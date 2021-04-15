@@ -55,6 +55,10 @@ class Node:
         Handles incoming messages
         :param connection: Connection object
         """
+        # Raise exceptions, dont hide them
+        if self.sock.status != "Nominal":
+            raise Exception(self.sock.status[0])
+
         msg = connection.recv()
         #print(msg.packets)
         packets = msg.packets[1:]
@@ -62,7 +66,7 @@ class Node:
         if packets[0] == 'new_transaction':
             log.debug(
                 "GOT_NEW_TRANSACTION",
-                {
+                extra={
                 'node': numerize_public_key(self.bc),
                 'data': packets[1]
                 })
@@ -85,8 +89,8 @@ class Node:
         # Mined new block
         elif packets[0] == 'new_block':
             log.debug("GOT_NEW_BLOCK",
-                {
-                'node': numerize_public_key(self.bc),
+                extra={
+                'mesh_id': self.sock.id,
                 'data': packets[1]
                 })
 
@@ -111,12 +115,18 @@ class Node:
                             self.reward(1, block)
                 else:
                     print(bcolors.FAIL + "Invalid block!" + bcolors.ENDC)
+                    print(new_block)
                     # Punish for invalid block
                     #self.bc.id_bank.modify(new_block.public_key, -5)
                     self.punish(5, new_block)
 
         # Incoming blocks before signing
         elif packets[0] == 'incoming_block':
+            log.debug("GOT_INCOMING",
+                extra={
+                'mesh_id': self.sock.id,
+                'data': packets[1]
+                })
             self.incoming_blocks.append(fromJSON(packets[1]))
 
         # Someone asking for chain length
@@ -176,10 +186,31 @@ class Node:
         self.sock.send('passport', numerize_public_key(self.bc), str(self.sock.id))
     
     def reward(self, points, o: object):
+        if points == 0:
+            return
+
+        #other_mesh_id = str(self.bc.nodes[self.id_pk_map[numerize_public_key(o)]].decode('utf-8'))[2:-1]
+
+        if points > 0:
+            _msg = "REWARD"
+        else:
+            _msg = "PUNISH"
+
+        log.debug(_msg,
+                extra={
+                'mesh_id': self.sock.id,
+                #'other_mesh_id': other_mesh_id
+                })
+        # try:
         score = self.bc.nodes.get(self.id_pk_map[numerize_public_key(o)])
         if score is not None:
-            score -= 2
-            self.bc.nodes[self.id_pk_map[numerize_public_key(o)]]
+            score += points
+            print(self.id_pk_map[numerize_public_key(o)])
+        # except:
+        #     self.passport()
+        #     sleep(0.1)
+        #     self.reward(points, o)
+
 
     def punish(self, points, o: object):
         self.reward(-points, o)
@@ -279,7 +310,7 @@ def main():
             elif i == 'add_test_transaction' or i == 't':
                 num = random.randint(1, 100)
                 transaction = Transaction(
-                    node.bc.public_key, "test", f"hash{num}", "test.name")
+                    node.bc.public_key, {'test': 'manual'})
                 sign(transaction, node.bc.private_key)
                 node.bc.add_transaction(transaction)
                 print(bcolors.OKBLUE + "Transaction added" + bcolors.ENDC)
@@ -299,8 +330,8 @@ def main():
                     exec(command)
                 except Exception as e:
                     print(e)
-            elif i == "bank":
-                print(node.bc.id_bank.bank)
+            #elif i == "bank":
+            #    print(node.bc.id_bank.bank)
             elif i == "passport":
                 node.passport()
             elif i == "map":
