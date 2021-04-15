@@ -1,6 +1,7 @@
 import hashlib
 import json
 from datetime import datetime
+import time
 from typing import List
 
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
@@ -123,7 +124,7 @@ class Block:
         return bytes(json.dumps({
             "block_id": str(self.block_id),
             "transactions": str(transactions),
-            "datetime": self.datetime.timestamp(),
+            "datetime": self.datetime.timetuple(),
             "prev_hash": str(self.prev_hash),
             "pub_key": pub_key,
         }), 'utf-8')
