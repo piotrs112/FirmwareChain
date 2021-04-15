@@ -6,10 +6,10 @@ from block import Block
 
 
 def add_one(uuid: str, zones):
-    _modify_one_permission(uuid, zones, "add")
+    return _modify_one_permission(uuid, zones, "add")
 
 def remove_one(uuid: str, zones):
-    _modify_one_permission(uuid, zones, "remove")
+    return _modify_one_permission(uuid, zones, "remove")
 
 def _modify_one_permission(uuid: str, zones, command: str) -> dict:
     """

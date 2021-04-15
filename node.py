@@ -12,7 +12,7 @@ from logger import log
 from signing import (directly_numerize_public_key, numerize_public_key, sign,
                      verify_signature)
 from transaction import Transaction
-from data_creator import save_to_db
+from data_creator import add_one, save_to_db
 
 
 def exit_function(node):
@@ -318,6 +318,15 @@ def main():
                 sign(transaction, node.bc.private_key)
                 node.bc.add_transaction(transaction)
                 print(bcolors.OKBLUE + "Transaction added" + bcolors.ENDC)
+            
+            elif i == 'tt':
+                transaction = Transaction(
+                    node.bc.public_key,
+                    add_one("446176000983", "door1")
+                    )
+                sign(transaction, node.bc.private_key)
+                node.bc.add_transaction(transaction)
+                print(bcolors.OKBLUE + "446176000983 @ door1 added" + bcolors.ENDC)
 
             elif i == 'last block' or i == 'lb':
                 print(node.bc.last_block.toJSON())
