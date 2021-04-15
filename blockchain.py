@@ -1,3 +1,4 @@
+from data_creator import save_to_db
 import json
 from datetime import datetime
 from time import sleep
@@ -215,6 +216,10 @@ class Blockchain:
 
                 self.chain.append(block)
                 self.pending_transactions = []
+
+                # Save to db
+                save_to_db(block)
+                
                 print("Mined")
             else:
                 log.debug("MINED_NOT_LEADER",

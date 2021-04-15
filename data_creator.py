@@ -1,11 +1,15 @@
+import json
+import sqlite3
+from base64 import b64encode
+
+from block import Block
+
+
 def add_one(uuid: str, zones):
     _modify_one_permission(uuid, zones, "add")
 
 def remove_one(uuid: str, zones):
     _modify_one_permission(uuid, zones, "remove")
-
-def add_many_many(uuid: str, zones):
-    _modify_one_permission(uuid, zones, "add")
 
 def _modify_one_permission(uuid: str, zones, command: str) -> dict:
     """
@@ -32,3 +36,13 @@ def _modify_permission(uuids: list, zones, command: str) -> dict:
         })
     
     return _dict
+
+def save_to_db(block: Block):
+    with sqlite3.connect('access.db') as conn:
+        conn.execute("CREATE TABLE IF NOT EXISTS access (id INTEGER PRIMARY KEY AUTOINCREMENT, json TEXT);")
+
+        for _t in block.transactions:
+            #data = b64encode(json.dumps(_t.data).encode()).decode()
+            data = json.dumps(_t.data)
+            conn.execute(f"INSERT INTO access ('json') VALUES ('{data}');")
+        

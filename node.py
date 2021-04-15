@@ -12,6 +12,7 @@ from logger import log
 from signing import (directly_numerize_public_key, numerize_public_key, sign,
                      verify_signature)
 from transaction import Transaction
+from data_creator import save_to_db
 
 
 def exit_function(node):
@@ -113,6 +114,9 @@ class Node:
                         blocks_to_reward = [b for b in self.incoming_blocks if b.datetime < new_block.datetime]
                         for block in blocks_to_reward:
                             self.reward(1, block)
+                        
+                        # Save to db
+                        save_to_db(new_block)
                 else:
                     print(bcolors.FAIL + "Invalid block!" + bcolors.ENDC)
                     print(new_block)
