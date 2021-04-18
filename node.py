@@ -12,7 +12,7 @@ from logger import log
 from signing import (directly_numerize_public_key, numerize_public_key, sign,
                      verify_signature)
 from transaction import Transaction
-from data_creator import add_one, save_to_db
+from data_creator import add_one, remove_one, save_to_db
 
 
 def exit_function(node):
@@ -319,14 +319,35 @@ def main():
                 node.bc.add_transaction(transaction)
                 print(bcolors.OKBLUE + "Transaction added" + bcolors.ENDC)
             
-            elif i == 'tt':
+            elif i.startswith('add'):
+                try:
+                    _, uuid, door = i.split(' ')
+                except ValueError:
+                    uuid = "446176000983"
+                    door = "door1"
+
                 transaction = Transaction(
                     node.bc.public_key,
-                    add_one("446176000983", "door1")
+                    add_one(str(uuid), door)
                     )
                 sign(transaction, node.bc.private_key)
                 node.bc.add_transaction(transaction)
-                print(bcolors.OKBLUE + "446176000983 @ door1 added" + bcolors.ENDC)
+                print(bcolors.OKBLUE + f"{uuid} @ {door} added" + bcolors.ENDC)
+            
+            elif i.startswith('rm'):
+                try:
+                    _, uuid, door = i.split(' ')
+                except ValueError:
+                    uuid = "446176000983"
+                    door = "door1"
+
+                transaction = Transaction(
+                    node.bc.public_key,
+                    remove_one(str(uuid), door)
+                    )
+                sign(transaction, node.bc.private_key)
+                node.bc.add_transaction(transaction)
+                print(bcolors.OKBLUE + f"{uuid} @ {door} removed" + bcolors.ENDC)
 
             elif i == 'last block' or i == 'lb':
                 print(node.bc.last_block.toJSON())
