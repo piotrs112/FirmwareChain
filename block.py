@@ -1,8 +1,9 @@
+from _typeshed import NoneType
 import hashlib
 import json
 from datetime import datetime
 import time
-from typing import List
+from typing import List, Union
 
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from merklelib import MerkleTree
@@ -16,7 +17,7 @@ class Block:
     Block class.
     """
 
-    def __init__(self, block_id: int, transactions: List[Transaction], datetime: datetime, prev_hash: str, public_key: RSAPublicKey):
+    def __init__(self, block_id: int, transactions: List[Transaction], datetime: datetime, prev_hash: str, public_key: Union[RSAPublicKey, None]):
         """
         Block class constructor
         :param block_id: ID of the block, unique
