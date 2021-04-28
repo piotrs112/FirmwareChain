@@ -48,7 +48,7 @@ def transaction_fromJSON(t: str) -> Transaction:
     t = json.loads(t)
     pub_key = denumerize_public_key(t['public_key'])
     new_transaction = Transaction(
-        pub_key, json.loads(t['data']))
+        pub_key, json.loads(t['data']), datetime=datetime.fromtimestamp(t["datetime"]))
     if t['signature'] is not None:
         new_transaction.signature = b''.fromhex(t['signature'])
     return new_transaction

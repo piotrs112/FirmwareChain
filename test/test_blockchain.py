@@ -95,9 +95,9 @@ def test_points():
     sleep(0.1)
 
     n1.passport()
-    n2.passport()
-    n3.passport()
-    sleep(0.1)
+    #n2.passport()
+    #n3.passport()
+    sleep(0.5)
 
     for i in range(5):
         t = Transaction(n1.bc.public_key, {'test': 'data'})

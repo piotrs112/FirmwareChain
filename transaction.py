@@ -1,5 +1,6 @@
 import hashlib
 import json
+from datetime import datetime
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
@@ -12,16 +13,18 @@ class Transaction:
     Transaction class containing update data.
     """
 
-    def __init__(self, public_key: RSAPublicKey, data: dict):
+    def __init__(self, public_key: RSAPublicKey, data: dict, datetime: datetime = datetime.now()):
         """
         Transaction class constructor
         :param public_key: Author's public key
         :param data: Serializable dict data object
+        :param datetime: Transaction Timestamp
         """
 
         self.public_key = public_key
         self.data = data
         self.signature = None
+        self.datetime = datetime
 
     @property
     def representation(self) -> bytes:
@@ -31,7 +34,7 @@ class Transaction:
         key = self.public_key.public_bytes(
             serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
         _data = json.dumps(self.data)
-        return b"%s%s" % (key, _data.encode())
+        return b"%s%s%s" % (key, _data.encode(), str(self.datetime.timestamp()).encode())
 
     def toJSON(self):
         """
@@ -44,7 +47,8 @@ class Transaction:
         return json.dumps({
             "public_key": numerize_public_key(self),
             "data": json.dumps(self.data),
-            "signature": signature
+            "signature": signature,
+            "datetime": self.datetime.timestamp()
         })
 
     def __eq__(self, other) -> bool:
