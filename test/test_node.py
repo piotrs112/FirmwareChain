@@ -41,14 +41,14 @@ def test_id_map():
     id_1 = {directly_numerize_public_key(n.bc.public_key): str(n.sock.id)}
     id_2 = {directly_numerize_public_key(n2.bc.public_key): str(n2.sock.id)}
     
-    assert n.id_pk_map == {directly_numerize_public_key(n.bc.public_key): str(n.sock.id)}
-    assert n2.id_pk_map == {directly_numerize_public_key(n2.bc.public_key): str(n2.sock.id)}
+    assert n.id_pk_map == id_1
+    assert n2.id_pk_map == id_2
 
     n2.passport()
     sleep(0.1)
 
-    assert n.id_pk_map.get(directly_numerize_public_key(n2.bc.public_key)) == str(n2.sock.id)
-    assert n2.id_pk_map.get(directly_numerize_public_key(n.bc.public_key)) == str(n.sock.id)
+    assert n.id_pk_map.get(directly_numerize_public_key(n2.bc.public_key)) == str(n2.sock.id.decode())
+    assert n2.id_pk_map.get(directly_numerize_public_key(n.bc.public_key)) == str(n.sock.id.decode())
 
 def test_transaction_propagation():
     port = randint(6002, 6100)
@@ -69,6 +69,38 @@ def test_transaction_propagation():
 
     assert node.sock.status == "Nominal"
 
+def test_reward():
+    port = randint(9000, 10000)
+    n1 = Node(port=port)
+    n2 = Node(port=port+1)
+
+    n1.sock.connect("0.0.0.0", port+1)
+
+    t = Transaction(n2.bc.public_key, {"test": "data"})
+    sign(t, n2.bc.private_key)
+
+    sleep(0.5)
+
+    n1.passport()
+
+    sleep(0.5)
+
+    assert n1.bc.nodes.get(n2.sock.id.decode('utf-8'), None) == 0
+
+    n1.reward(5, t)
+    sleep(0.5)
+
+    assert n1.bc.nodes.get(n2.sock.id.decode('utf-8'), None) == 5
+
+    n1.reward(50, t)
+    sleep(0.5)
+
+    assert n1.bc.nodes.get(n2.sock.id.decode('utf-8'), None) == 30
+
+    n1.punish(79, t)
+    sleep(0.5)
+
+    assert n1.bc.nodes.get(n2.sock.id.decode('utf-8'), None) == 0
 
 def test_mining():
     N_NODES = 2

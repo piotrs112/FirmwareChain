@@ -156,13 +156,15 @@ class Node:
         # Update new node in id bank
         elif packets[0] == 'passport':
             print("PASSPORT")
+            print({packets[2][2:-1]: 0})
             # self.bc.id_bank.update({
             #     packets[1]: {
             #         "mesh_id": str(packets[2]),
             #         "score": 10
             #     }
             # })
-            self.id_pk_map.update({packets[1]: packets[2]})
+            self.id_pk_map.update({packets[1]: packets[2][2:-1]})
+            self.bc.nodes.update({packets[2][2:-1]: 0})
             self.passport()
 
         return True
@@ -206,14 +208,17 @@ class Node:
                 #'other_mesh_id': other_mesh_id
                 })
         # try:
-        score = self.bc.nodes.get(self.id_pk_map[numerize_public_key(o)])
+        score = self.bc.nodes.get(self.id_pk_map[numerize_public_key(o)], None)
+        
         if score is not None:
             score += points
-            print(self.id_pk_map[numerize_public_key(o)])
-        # except:
-        #     self.passport()
-        #     sleep(0.1)
-        #     self.reward(points, o)
+            
+            if score > 30:
+                score = 30
+            elif score < 0:
+                score = 0
+            
+            self.bc.nodes[self.id_pk_map[numerize_public_key(o)]] = score
 
 
     def punish(self, points, o: object):

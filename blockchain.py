@@ -127,24 +127,24 @@ class Blockchain:
         #nodes = [peer for peer in nodes if peer["score"] >= 10]
         if self.sock is not None:
             for peer in self.sock.routing_table:
-                if peer.decode('utf-8') not in self.nodes:
+                if peer[2:-1] not in self.nodes.keys():
                     # New peers
                     self.nodes[peer.decode('utf-8')] = 0
         
         # Sort potential leaders for bad ones
         nodes = list(self.nodes.keys())
-        nodes = [n for n in nodes if self.nodes[n] >= 10]
+        nodes = [n for n in nodes if self.nodes[n] >= 15]
         if len(nodes) == 0:
             # No one is a leader!
             # We choose the first one, and give them 10 points
             nodes = list(self.nodes.keys())
             nodes.sort()
-            self.nodes[nodes[0]] = 10
+            self.nodes[nodes[0]] = 15
             return nodes[0]
 
-        # Choose leader at 10-seconds intervals
+        # Choose leader
         time = datetime.now() - self.chain[0].datetime
-        leader_n = int(time.total_seconds() % len(nodes)) #/10 % len(nodes))
+        leader_n = int(time.total_seconds() % len(nodes))
         nodes.sort()
 
         return nodes[leader_n]

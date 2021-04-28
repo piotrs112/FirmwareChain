@@ -52,8 +52,8 @@ def test_poah():
     b3 = Blockchain()
 
     nodes = {
-        "1": 10,
-        "3": 10,
+        "1": 15,
+        "3": 15,
         "5": 0,
     }
 
@@ -64,7 +64,7 @@ def test_poah():
     assert b1.proof_of_authentication() == b2.proof_of_authentication() == b3.proof_of_authentication(), "Different chosen leaders"
 
     leader1 = b1.proof_of_authentication()
-    sleep(1)
+    sleep(1.1)
     leader2 = b1.proof_of_authentication()
     assert leader1 is not leader2 and leader1 != "5" and leader2 != "5"
 
@@ -75,7 +75,7 @@ def test_add_validated():
     sign(t, bc.private_key)
     bc.add_transaction(t)
     bc.mine()
-    assert bc.nodes[bc.sock.id.decode('utf-8')] == 10
+    assert bc.nodes[bc.sock.id.decode('utf-8')] == 10 or bc.nodes[bc.sock.id.decode('utf-8')] == 15
 
 def test_points():
     r = randint(0,10)
@@ -98,7 +98,7 @@ def test_points():
         n1.bc.add_transaction(t)
         sleep(0.5)
         n1.sock.send('mine')
-        sleep(0.9)
+        sleep(1)
     
     sleep(1)
     for n in [n1, n2, n3]:

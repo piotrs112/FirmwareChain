@@ -1,4 +1,3 @@
-from _typeshed import NoneType
 import hashlib
 import json
 from datetime import datetime
