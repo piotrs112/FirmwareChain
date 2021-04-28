@@ -11,11 +11,12 @@ d_t = 0
 
 def replace(text):
     if text == "I_AM_LEADER":
-        return "PODPISANO BLOK"
+        return "SEND"
     elif text == "GOT_NEW_BLOCK":
-        return "ODEBRANO BLOK"
+        return "GET"
 
-for d in d
+for _d in d:
+    _d['msg'] = replace(_d['msg'])
 
 colors = ('b', 'g', 'r', 'c', 'm', 'y')
 
@@ -25,6 +26,9 @@ TRANSACTIONS_PER_BLOCK = 1
 
 f = lambda x: x - d_t
 d_t = min(t)
+
+
+plt.rc('font', size=16)
 
 for i in range(N_NODES):
     _t = t[i*5:(i+1)*5]
@@ -38,11 +42,11 @@ for i in range(N_NODES):
 #plot(t, [d['msg'] for d in data], 'ro')
 #vlines(t, ymin=0, ymax=1)
 
-plt.title("Czas propagacji nowego bloku w sieci")
+#plt.title("Czas propagacji nowego bloku w sieci")
 plt.grid()
 plt.xlabel("Czas [s]")
 
-plt.legend(bbox_to_anchor = (1.0, 1), loc = 'best')
+#plt.legend(bbox_to_anchor = (1.0, 1), loc = 'best')
 plt.show()
 
-#savefig("plot.pdf")
+#plt.savefig("plot.pdf")
