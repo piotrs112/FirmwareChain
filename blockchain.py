@@ -39,7 +39,7 @@ class Blockchain:
         # generate private key and public key if not found
         if not ("private_key.pem" in os.listdir() and "public_key.pem" in os.listdir()):
             private_key = Blockchain.generate_private_key()
-            public_key = Blockchain.generate_public_key(self.private_key)
+            public_key = Blockchain.generate_public_key(private_key)
 
             public_pem = public_key.public_bytes(
                 encoding=serialization.Encoding.PEM,
