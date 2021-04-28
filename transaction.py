@@ -1,8 +1,8 @@
 import hashlib
 import json
 
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 
 from signing import is_signed, numerize_public_key, verify_signature
 
@@ -60,7 +60,7 @@ class Transaction:
                     return False
             except AttributeError:
                 return False
-            
+
         else:
             return False
             # todo porownac podpis i
@@ -77,7 +77,7 @@ class Transaction:
             s += "Verified"
 
         return s
-    
+
     def sha(self):
         """
         Computes sha256 hash of the transaction.

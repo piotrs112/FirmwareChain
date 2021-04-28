@@ -1,4 +1,3 @@
-from _pytest.fixtures import add_funcarg_pseudo_fixture_def
 import pytest
 from cryptography.hazmat.backends.openssl.rsa import _RSAPublicKey
 

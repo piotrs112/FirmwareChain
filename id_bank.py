@@ -21,7 +21,7 @@ class ID_bank():
             #print("Connection error")
             raise ConnectionError
 
-        self.collection = db.get_collection(f"id_bank") #_{self.owner}")
+        self.collection = db.get_collection(f"id_bank")  # _{self.owner}")
         saved_bank = self.collection.find_one({
             'owner': self.owner
         })
@@ -40,7 +40,7 @@ class ID_bank():
             raise e
 
         return dict(bank_obj)
-    
+
     def get(self, pub_key: RSAPublicKey) -> dict:
         try:
             return self.bank[directly_numerize_public_key(pub_key)]
@@ -59,13 +59,13 @@ class ID_bank():
                         }
                  }
         }
-        
+
 
         """
         bank: dict = self.bank
-        #print(bank)
+        # print(bank)
         bank.update(data)
-        #print(bank)
+        # print(bank)
         self.collection.find_one_and_replace({
             'owner': self.owner
         },
@@ -76,7 +76,7 @@ class ID_bank():
 
     def remove_bank(self):
         self.collection.delete_one({'owner': self.owner})
-        #self.collection.drop(f"id_bank_{self.owner}")
+        # self.collection.drop(f"id_bank_{self.owner}")
 
     def modify(self, pub_key: RSAPublicKey, points=-1):
         """
@@ -91,7 +91,7 @@ class ID_bank():
         data = self.get(pub_key)
         if data:
             data['score'] = data['score'] + points
-            
+
             if data['score'] < 0:
                 data['score'] = 0
             elif data['score'] > 20:

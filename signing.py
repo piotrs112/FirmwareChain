@@ -85,14 +85,14 @@ def denumerize_public_key(key_numeric: str) -> RSAPublicKey:
     return RSAPublicNumbers(int(e), int(n)).public_key()
 
 
-# def is_author_trusted(self):
-#     """
-#     Chcecks if author's public key is on the trusted list
-#     """
-#     credentials = self.numerize_public_key()
+def is_author_trusted(self):
+    """
+    Chcecks if author's public key is on the trusted list
+    """
+    credentials = self.numerize_public_key()
 
-#     with open("trusted_keys.json", "r") as file:
-#         if credentials in file.read().splitlines():
-#             return True
-#         else:
-#             return False
+    with open("trusted_keys.json", "r") as file:
+        if credentials in file.read().splitlines():
+            return True
+        else:
+            return False

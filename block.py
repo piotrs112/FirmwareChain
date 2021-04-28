@@ -1,11 +1,9 @@
 import hashlib
 import json
 from datetime import datetime
-import time
 from typing import List, Union
 
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
-from merklelib import MerkleTree
 
 from signing import numerize_public_key, verify_signature
 from transaction import Transaction
